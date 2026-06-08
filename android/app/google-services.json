@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "404731605087",
+    "project_id": "renalbites",
+    "storage_bucket": "renalbites.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404731605087:android:614d85a7bc0bed6fb06bea",
+        "android_client_info": {
+          "package_name": "com.example.renalbites"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuM7rDTDdobZTYbNc4oe1UH1mu1eZ__rM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
