@@ -23,6 +23,22 @@ class _ReportScreenState extends State<ReportScreen> {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
+  double normalizeCalories(dynamic value) {
+    final calories = toDouble(value);
+    if (calories > 10000) return calories / 1000;
+    return calories;
+  }
+
+  double normalizeProtein(dynamic value) {
+    return toDouble(value);
+  }
+
+  double normalizeMineralToMg(dynamic value) {
+    final mineral = toDouble(value);
+    if (mineral > 0 && mineral < 50) return mineral * 1000;
+    return mineral;
+  }
+
   double getMaxLimit(String limit) {
     if (limit.contains("-")) {
       final parts = limit.split("-");
@@ -36,8 +52,10 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   String formatValue(double value, String unit) {
-    if (unit == "cal") return value.toStringAsFixed(0);
-    return value.toStringAsFixed(2);
+    if (unit == "kcal") return value.toStringAsFixed(0);
+    if (unit == "g") return value.toStringAsFixed(1);
+    if (unit == "mg") return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
   }
 
   Future<void> pickDate() async {
@@ -113,10 +131,11 @@ class _ReportScreenState extends State<ReportScreen> {
 
       for (final doc in snapshot.docs) {
         final meal = doc.data();
-        calories += toDouble(meal['calories']);
-        protein += toDouble(meal['protein']);
-        potassium += toDouble(meal['potassium']);
-        phosphate += toDouble(meal['phosphate']);
+
+        calories += normalizeCalories(meal['calories']);
+        protein += normalizeProtein(meal['protein']);
+        potassium += normalizeMineralToMg(meal['potassium']);
+        phosphate += normalizeMineralToMg(meal['phosphate']);
       }
     }
 
@@ -272,6 +291,8 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget nutrientBarChart({
+    required double calories,
+    required double caloriesLimit,
     required double protein,
     required double proteinLimit,
     required double potassium,
@@ -279,12 +300,14 @@ class _ReportScreenState extends State<ReportScreen> {
     required double phosphate,
     required double phosphateLimit,
   }) {
+    final caloriesPercent = getPercentage(calories, caloriesLimit);
     final proteinPercent = getPercentage(protein, proteinLimit);
     final potassiumPercent = getPercentage(potassium, potassiumLimit);
     final phosphatePercent = getPercentage(phosphate, phosphateLimit);
 
     final maxY =
         [
+          caloriesPercent,
           proteinPercent,
           potassiumPercent,
           phosphatePercent,
@@ -334,7 +357,7 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(height: 22),
 
           SizedBox(
-            height: 260,
+            height: 270,
             child: BarChart(
               BarChartData(
                 maxY: maxY,
@@ -348,17 +371,21 @@ class _ReportScreenState extends State<ReportScreen> {
                       String detail = "";
 
                       if (group.x == 0) {
+                        name = "Calories";
+                        detail =
+                            "${formatValue(calories, "kcal")} kcal / ${formatValue(caloriesLimit, "kcal")} kcal";
+                      } else if (group.x == 1) {
                         name = "Protein";
                         detail =
-                            "${formatValue(protein, "g")}g / ${formatValue(proteinLimit, "g")}g";
-                      } else if (group.x == 1) {
+                            "${formatValue(protein, "g")} g / ${formatValue(proteinLimit, "g")} g";
+                      } else if (group.x == 2) {
                         name = "Potassium";
                         detail =
-                            "${formatValue(potassium, "g")}g / ${formatValue(potassiumLimit, "g")}g";
+                            "${formatValue(potassium, "mg")} mg / ${formatValue(potassiumLimit, "mg")} mg";
                       } else {
                         name = "Phosphorus";
                         detail =
-                            "${formatValue(phosphate, "g")}g / ${formatValue(phosphateLimit, "g")}g";
+                            "${formatValue(phosphate, "mg")} mg / ${formatValue(phosphateLimit, "mg")} mg";
                       }
 
                       return BarTooltipItem(
@@ -411,16 +438,17 @@ class _ReportScreenState extends State<ReportScreen> {
                       getTitlesWidget: (value, meta) {
                         String text = "";
 
-                        if (value.toInt() == 0) text = "Protein";
-                        if (value.toInt() == 1) text = "Potassium";
-                        if (value.toInt() == 2) text = "Phosphorus";
+                        if (value.toInt() == 0) text = "Calories";
+                        if (value.toInt() == 1) text = "Protein";
+                        if (value.toInt() == 2) text = "Potassium";
+                        if (value.toInt() == 3) text = "Phosphorus";
 
                         return Padding(
                           padding: const EdgeInsets.only(top: 10),
                           child: Text(
                             text,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Color.fromARGB(255, 35, 63, 45),
                             ),
@@ -435,10 +463,10 @@ class _ReportScreenState extends State<ReportScreen> {
                     x: 0,
                     barRods: [
                       BarChartRodData(
-                        toY: proteinPercent,
-                        width: 34,
+                        toY: caloriesPercent,
+                        width: 28,
                         borderRadius: BorderRadius.circular(8),
-                        color: barColor(proteinPercent),
+                        color: barColor(caloriesPercent),
                       ),
                     ],
                   ),
@@ -446,10 +474,10 @@ class _ReportScreenState extends State<ReportScreen> {
                     x: 1,
                     barRods: [
                       BarChartRodData(
-                        toY: potassiumPercent,
-                        width: 34,
+                        toY: proteinPercent,
+                        width: 28,
                         borderRadius: BorderRadius.circular(8),
-                        color: barColor(potassiumPercent),
+                        color: barColor(proteinPercent),
                       ),
                     ],
                   ),
@@ -457,8 +485,19 @@ class _ReportScreenState extends State<ReportScreen> {
                     x: 2,
                     barRods: [
                       BarChartRodData(
+                        toY: potassiumPercent,
+                        width: 28,
+                        borderRadius: BorderRadius.circular(8),
+                        color: barColor(potassiumPercent),
+                      ),
+                    ],
+                  ),
+                  BarChartGroupData(
+                    x: 3,
+                    barRods: [
+                      BarChartRodData(
                         toY: phosphatePercent,
-                        width: 34,
+                        width: 28,
                         borderRadius: BorderRadius.circular(8),
                         color: barColor(phosphatePercent),
                       ),
@@ -711,6 +750,10 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 final multiplier = getPeriodMultiplier();
 
+                final caloriesLimit =
+                    getMaxLimit(userData['caloriesLimit']?.toString() ?? "0") *
+                    multiplier;
+
                 final proteinLimit =
                     getMaxLimit(userData['proteinLimit']?.toString() ?? "0") *
                     multiplier;
@@ -746,8 +789,8 @@ class _ReportScreenState extends State<ReportScreen> {
                         Expanded(
                           child: nutrientCard(
                             "Calories",
-                            formatValue(calories, "cal"),
-                            "cal",
+                            formatValue(calories, "kcal"),
+                            "kcal",
                             Icons.local_fire_department,
                             Colors.orange,
                           ),
@@ -772,8 +815,8 @@ class _ReportScreenState extends State<ReportScreen> {
                         Expanded(
                           child: nutrientCard(
                             "Potassium",
-                            formatValue(potassium, "g"),
-                            "g",
+                            formatValue(potassium, "mg"),
+                            "mg",
                             Icons.bolt,
                             Colors.purple,
                           ),
@@ -782,8 +825,8 @@ class _ReportScreenState extends State<ReportScreen> {
                         Expanded(
                           child: nutrientCard(
                             "Phosphorus",
-                            formatValue(phosphate, "g"),
-                            "g",
+                            formatValue(phosphate, "mg"),
+                            "mg",
                             Icons.science,
                             Colors.teal,
                           ),
@@ -794,6 +837,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     const SizedBox(height: 18),
 
                     nutrientBarChart(
+                      calories: calories,
+                      caloriesLimit: caloriesLimit,
                       protein: protein,
                       proteinLimit: proteinLimit,
                       potassium: potassium,
@@ -816,6 +861,12 @@ class _ReportScreenState extends State<ReportScreen> {
                     const SizedBox(height: 8),
 
                     nutrientDetailTile(
+                      nutrient: "Calories",
+                      intake: calories,
+                      limit: caloriesLimit,
+                      unit: "kcal",
+                    ),
+                    nutrientDetailTile(
                       nutrient: "Protein",
                       intake: protein,
                       limit: proteinLimit,
@@ -825,13 +876,13 @@ class _ReportScreenState extends State<ReportScreen> {
                       nutrient: "Potassium",
                       intake: potassium,
                       limit: potassiumLimit,
-                      unit: "g",
+                      unit: "mg",
                     ),
                     nutrientDetailTile(
                       nutrient: "Phosphorus",
                       intake: phosphate,
                       limit: phosphateLimit,
-                      unit: "g",
+                      unit: "mg",
                     ),
                   ],
                 );

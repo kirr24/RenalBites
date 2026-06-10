@@ -25,6 +25,32 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
+  double normalizeCalories(dynamic value) {
+    final calories = toDouble(value);
+
+    // If old data was saved as cal instead of kcal
+    if (calories > 10000) {
+      return calories / 1000;
+    }
+
+    return calories;
+  }
+
+  double normalizeProtein(dynamic value) {
+    return toDouble(value); // g
+  }
+
+  double normalizeMineralToMg(dynamic value) {
+    final mineral = toDouble(value);
+
+    // If old data was saved as g, convert to mg
+    if (mineral > 0 && mineral < 50) {
+      return mineral * 1000;
+    }
+
+    return mineral; // mg
+  }
+
   String getDateId(DateTime date) {
     return DateFormat('yyyy-MM-dd').format(date);
   }
@@ -34,8 +60,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   String formatValue(double value, String unit) {
-    if (unit == "cal") return value.toStringAsFixed(0);
-    return value.toStringAsFixed(2);
+    if (unit == "kcal") return value.toStringAsFixed(0);
+    if (unit == "g") return value.toStringAsFixed(1);
+    if (unit == "mg") return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
   }
 
   double getMaxLimit(String limit) {
@@ -148,10 +176,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     for (final doc in snapshot.docs) {
       final meal = doc.data();
 
-      calories += toDouble(meal['calories']);
-      protein += toDouble(meal['protein']);
-      potassium += toDouble(meal['potassium']);
-      phosphate += toDouble(meal['phosphate']);
+      calories += normalizeCalories(meal['calories']);
+      protein += normalizeProtein(meal['protein']);
+      potassium += normalizeMineralToMg(meal['potassium']);
+      phosphate += normalizeMineralToMg(meal['phosphate']);
     }
 
     return {
@@ -446,7 +474,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 14),
+
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
@@ -472,7 +502,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 },
               ),
             ),
+
             const SizedBox(height: 18),
+
             FutureBuilder<List<dynamic>>(
               future: loadFoodLogData(),
               builder: (context, snapshot) {
@@ -502,12 +534,18 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   );
                 }
 
+                final double caloriesLimit = getMaxLimit(
+                  userData['caloriesLimit']?.toString() ?? "0",
+                );
+
                 final double proteinLimit = getMaxLimit(
                   userData['proteinLimit']?.toString() ?? "0",
                 );
+
                 final double potassiumLimit = getMaxLimit(
                   userData['potassiumLimit']?.toString() ?? "0",
                 );
+
                 final double phosphateLimit = getMaxLimit(
                   userData['phosphateLimit']?.toString() ?? "0",
                 );
@@ -517,25 +555,35 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 final double totalPotassiumToday = todayTotal['potassium'] ?? 0;
                 final double totalPhosphateToday = todayTotal['phosphate'] ?? 0;
 
+                final double caloriesBalance =
+                    caloriesLimit - totalCaloriesToday;
                 final double proteinBalance = proteinLimit - totalProteinToday;
                 final double potassiumBalance =
                     potassiumLimit - totalPotassiumToday;
                 final double phosphateBalance =
                     phosphateLimit - totalPhosphateToday;
 
+                final double caloriesPercent = calculateDailyPercentage(
+                  intake: totalCaloriesToday,
+                  dailyLimit: caloriesLimit,
+                );
+
                 final double proteinPercent = calculateDailyPercentage(
                   intake: totalProteinToday,
                   dailyLimit: proteinLimit,
                 );
+
                 final double potassiumPercent = calculateDailyPercentage(
                   intake: totalPotassiumToday,
                   dailyLimit: potassiumLimit,
                 );
+
                 final double phosphatePercent = calculateDailyPercentage(
                   intake: totalPhosphateToday,
                   dailyLimit: phosphateLimit,
                 );
 
+                final String caloriesStatus = getStatus(caloriesPercent);
                 final String proteinStatus = getStatus(proteinPercent);
                 final String potassiumStatus = getStatus(potassiumPercent);
                 final String phosphateStatus = getStatus(phosphatePercent);
@@ -576,10 +624,18 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   );
                 }
 
-                final double mealCalories = toDouble(mealData['calories']);
-                final double mealProtein = toDouble(mealData['protein']);
-                final double mealPotassium = toDouble(mealData['potassium']);
-                final double mealPhosphate = toDouble(mealData['phosphate']);
+                final double mealCalories = normalizeCalories(
+                  mealData['calories'],
+                );
+                final double mealProtein = normalizeProtein(
+                  mealData['protein'],
+                );
+                final double mealPotassium = normalizeMineralToMg(
+                  mealData['potassium'],
+                );
+                final double mealPhosphate = normalizeMineralToMg(
+                  mealData['phosphate'],
+                );
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,16 +648,20 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         color: Color.fromARGB(255, 35, 63, 45),
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     foodList(mealData),
+
                     const SizedBox(height: 10),
+
                     Row(
                       children: [
                         Expanded(
                           child: nutrientCard(
                             "Calories",
-                            formatValue(mealCalories, "cal"),
-                            "cal",
+                            formatValue(mealCalories, "kcal"),
+                            "kcal",
                             Icons.local_fire_department,
                             Colors.orange,
                           ),
@@ -618,14 +678,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
                     Row(
                       children: [
                         Expanded(
                           child: nutrientCard(
                             "Potassium",
-                            formatValue(mealPotassium, "g"),
-                            "g",
+                            formatValue(mealPotassium, "mg"),
+                            "mg",
                             Icons.bolt,
                             Colors.purple,
                           ),
@@ -634,15 +696,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         Expanded(
                           child: nutrientCard(
                             "Phosphorus",
-                            formatValue(mealPhosphate, "g"),
-                            "g",
+                            formatValue(mealPhosphate, "mg"),
+                            "mg",
                             Icons.science,
                             Colors.teal,
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 22),
+
                     const Text(
                       "Total Intake For Selected Date",
                       style: TextStyle(
@@ -651,14 +715,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         color: Color.fromARGB(255, 35, 63, 45),
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     Row(
                       children: [
                         Expanded(
                           child: nutrientCard(
                             "Calories",
-                            formatValue(totalCaloriesToday, "cal"),
-                            "cal",
+                            formatValue(totalCaloriesToday, "kcal"),
+                            "kcal",
                             Icons.local_fire_department,
                             Colors.orange,
                           ),
@@ -675,14 +741,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 12),
+
                     Row(
                       children: [
                         Expanded(
                           child: nutrientCard(
                             "Potassium",
-                            formatValue(totalPotassiumToday, "g"),
-                            "g",
+                            formatValue(totalPotassiumToday, "mg"),
+                            "mg",
                             Icons.bolt,
                             Colors.purple,
                           ),
@@ -691,15 +759,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         Expanded(
                           child: nutrientCard(
                             "Phosphorus",
-                            formatValue(totalPhosphateToday, "g"),
-                            "g",
+                            formatValue(totalPhosphateToday, "mg"),
+                            "mg",
                             Icons.science,
                             Colors.teal,
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 22),
+
                     const Text(
                       "Daily Limit Tracker",
                       style: TextStyle(
@@ -708,7 +778,19 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         color: Color.fromARGB(255, 35, 63, 45),
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
+                    progressTile(
+                      nutrient: "Calories",
+                      intake: totalCaloriesToday,
+                      limit: caloriesLimit,
+                      balance: caloriesBalance,
+                      percentage: caloriesPercent,
+                      status: caloriesStatus,
+                      unit: "kcal",
+                    ),
+
                     progressTile(
                       nutrient: "Protein",
                       intake: totalProteinToday,
@@ -718,6 +800,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       status: proteinStatus,
                       unit: "g",
                     ),
+
                     progressTile(
                       nutrient: "Potassium",
                       intake: totalPotassiumToday,
@@ -725,8 +808,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       balance: potassiumBalance,
                       percentage: potassiumPercent,
                       status: potassiumStatus,
-                      unit: "g",
+                      unit: "mg",
                     ),
+
                     progressTile(
                       nutrient: "Phosphorus",
                       intake: totalPhosphateToday,
@@ -734,10 +818,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       balance: phosphateBalance,
                       percentage: phosphatePercent,
                       status: phosphateStatus,
-                      unit: "g",
+                      unit: "mg",
                     ),
+
                     const SizedBox(height: 20),
+
                     logFoodButton(),
+
                     const SizedBox(height: 20),
                   ],
                 );

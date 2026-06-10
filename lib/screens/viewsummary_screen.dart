@@ -24,6 +24,22 @@ class ViewSummaryScreen extends StatelessWidget {
     return double.tryParse(limit) ?? 0.0;
   }
 
+  double normalizeCalories(dynamic value) {
+    final calories = toDouble(value);
+    if (calories > 10000) return calories / 1000;
+    return calories;
+  }
+
+  double normalizeProtein(dynamic value) {
+    return toDouble(value);
+  }
+
+  double normalizeMineralToMg(dynamic value) {
+    final mineral = toDouble(value);
+    if (mineral > 0 && mineral < 50) return mineral * 1000;
+    return mineral;
+  }
+
   double calculateDailyPercentage({
     required double intake,
     required double dailyLimit,
@@ -49,8 +65,9 @@ class ViewSummaryScreen extends StatelessWidget {
   }
 
   String formatValue(double value, String unit) {
-    if (unit == "cal") return value.toStringAsFixed(0);
-    if (unit == "g") return value.toStringAsFixed(2);
+    if (unit == "kcal") return value.toStringAsFixed(0);
+    if (unit == "g") return value.toStringAsFixed(1);
+    if (unit == "mg") return value.toStringAsFixed(0);
     return value.toStringAsFixed(1);
   }
 
@@ -69,6 +86,7 @@ class ViewSummaryScreen extends StatelessWidget {
 
   Future<Map<String, double>> getTodayTotalIntake(String dateId) async {
     final user = FirebaseAuth.instance.currentUser;
+
     if (user == null) {
       return {"calories": 0, "protein": 0, "potassium": 0, "phosphate": 0};
     }
@@ -89,10 +107,10 @@ class ViewSummaryScreen extends StatelessWidget {
     for (final doc in snapshot.docs) {
       final meal = doc.data();
 
-      totalCalories += toDouble(meal['calories']);
-      totalProtein += toDouble(meal['protein']);
-      totalPotassium += toDouble(meal['potassium']);
-      totalPhosphate += toDouble(meal['phosphate']);
+      totalCalories += normalizeCalories(meal['calories']);
+      totalProtein += normalizeProtein(meal['protein']);
+      totalPotassium += normalizeMineralToMg(meal['potassium']);
+      totalPhosphate += normalizeMineralToMg(meal['phosphate']);
     }
 
     return {
@@ -103,43 +121,28 @@ class ViewSummaryScreen extends StatelessWidget {
     };
   }
 
-  String buildNutrientMessage({
-    required double proteinBalance,
-    required double potassiumBalance,
-    required double phosphateBalance,
-  }) {
-    final exceeded = <String>[];
-
-    if (proteinBalance < 0) exceeded.add("Protein");
-    if (potassiumBalance < 0) exceeded.add("Potassium");
-    if (phosphateBalance < 0) exceeded.add("Phosphorus");
-
-    if (exceeded.isNotEmpty) {
-      return "You have exceeded your daily limit for ${exceeded.join(', ')}.";
-    }
-
-    return "Your meals today have been deducted from your daily limit. The remaining balance can be used for your next meals.";
-  }
-
   @override
   Widget build(BuildContext context) {
     final String todayDisplay = DateFormat('dd/MM').format(DateTime.now());
     final String dateId = data['logDate']?.toString() ?? getTodayId();
-
     final String mealType = data['mealType']?.toString() ?? "Meal";
 
-    final double currentCalories = toDouble(data['calories']);
-    final double currentProtein = toDouble(data['protein']);
-    final double currentPotassium = toDouble(data['potassium']);
-    final double currentPhosphate = toDouble(data['phosphate']);
+    final double currentCalories = normalizeCalories(data['calories']);
+    final double currentProtein = normalizeProtein(data['protein']);
+    final double currentPotassium = normalizeMineralToMg(data['potassium']);
+    final double currentPhosphate = normalizeMineralToMg(data['phosphate']);
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 218, 245, 226),
       appBar: AppBar(
-        titleSpacing: 0,
+        centerTitle: true,
         title: const Text(
           "Summary",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color.fromARGB(255, 251, 251, 251),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
       ),
       body: SafeArea(
@@ -166,6 +169,10 @@ class ViewSummaryScreen extends StatelessWidget {
               );
             }
 
+            final double caloriesLimit = getMaxLimit(
+              userData['caloriesLimit']?.toString() ?? "0",
+            );
+
             final double proteinLimit = getMaxLimit(
               userData['proteinLimit']?.toString() ?? "0",
             );
@@ -183,11 +190,17 @@ class ViewSummaryScreen extends StatelessWidget {
             final double totalPotassiumToday = todayTotal['potassium'] ?? 0;
             final double totalPhosphateToday = todayTotal['phosphate'] ?? 0;
 
+            final double caloriesBalance = caloriesLimit - totalCaloriesToday;
             final double proteinBalance = proteinLimit - totalProteinToday;
             final double potassiumBalance =
                 potassiumLimit - totalPotassiumToday;
             final double phosphateBalance =
                 phosphateLimit - totalPhosphateToday;
+
+            final double caloriesPercent = calculateDailyPercentage(
+              intake: totalCaloriesToday,
+              dailyLimit: caloriesLimit,
+            );
 
             final double proteinPercent = calculateDailyPercentage(
               intake: totalProteinToday,
@@ -204,20 +217,10 @@ class ViewSummaryScreen extends StatelessWidget {
               dailyLimit: phosphateLimit,
             );
 
+            final String caloriesStatus = getStatus(caloriesPercent);
             final String proteinStatus = getStatus(proteinPercent);
             final String potassiumStatus = getStatus(potassiumPercent);
             final String phosphateStatus = getStatus(phosphatePercent);
-
-            final bool hasWarning =
-                proteinBalance < 0 ||
-                potassiumBalance < 0 ||
-                phosphateBalance < 0;
-
-            final String nutrientMessage = buildNutrientMessage(
-              proteinBalance: proteinBalance,
-              potassiumBalance: potassiumBalance,
-              phosphateBalance: phosphateBalance,
-            );
 
             return ListView(
               padding: const EdgeInsets.all(16),
@@ -259,7 +262,7 @@ class ViewSummaryScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "$mealType Saved",
+                              "$mealType Summary",
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -268,7 +271,7 @@ class ViewSummaryScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              "$todayDisplay • Daily total updated",
+                              "$todayDisplay • Review before saving",
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color.fromARGB(255, 15, 46, 23),
@@ -300,8 +303,8 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Calories",
-                        formatValue(currentCalories, "cal"),
-                        "cal",
+                        formatValue(currentCalories, "kcal"),
+                        "kcal",
                         Icons.local_fire_department,
                         Colors.orange,
                       ),
@@ -326,8 +329,8 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Potassium",
-                        formatValue(currentPotassium, "g"),
-                        "g",
+                        formatValue(currentPotassium, "mg"),
+                        "mg",
                         Icons.bolt,
                         Colors.purple,
                       ),
@@ -336,13 +339,49 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Phosphorus",
-                        formatValue(currentPhosphate, "g"),
-                        "g",
+                        formatValue(currentPhosphate, "mg"),
+                        "mg",
                         Icons.science,
                         Colors.teal,
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 14),
+
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 255, 250, 230),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.orange.shade200,
+                      width: 1.3,
+                    ),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Color.fromARGB(255, 180, 110, 20),
+                        size: 28,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "To include this meal in your daily record, please go back and save it first. Once saved, your Total Intake Today and Daily Limit Tracker will be updated automatically.",
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 95, 65, 20),
+                            fontSize: 14,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 20),
@@ -363,8 +402,8 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Calories",
-                        formatValue(totalCaloriesToday, "cal"),
-                        "cal",
+                        formatValue(totalCaloriesToday, "kcal"),
+                        "kcal",
                         Icons.local_fire_department,
                         Colors.orange,
                       ),
@@ -389,8 +428,8 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Potassium",
-                        formatValue(totalPotassiumToday, "g"),
-                        "g",
+                        formatValue(totalPotassiumToday, "mg"),
+                        "mg",
                         Icons.bolt,
                         Colors.purple,
                       ),
@@ -399,8 +438,8 @@ class ViewSummaryScreen extends StatelessWidget {
                     Expanded(
                       child: nutrientCard(
                         "Phosphorus",
-                        formatValue(totalPhosphateToday, "g"),
-                        "g",
+                        formatValue(totalPhosphateToday, "mg"),
+                        "mg",
                         Icons.science,
                         Colors.teal,
                       ),
@@ -422,6 +461,16 @@ class ViewSummaryScreen extends StatelessWidget {
                 const SizedBox(height: 8),
 
                 progressTile(
+                  nutrient: "Calories",
+                  intake: totalCaloriesToday,
+                  limit: caloriesLimit,
+                  balance: caloriesBalance,
+                  percentage: caloriesPercent,
+                  status: caloriesStatus,
+                  unit: "kcal",
+                ),
+
+                progressTile(
                   nutrient: "Protein",
                   intake: totalProteinToday,
                   limit: proteinLimit,
@@ -438,7 +487,7 @@ class ViewSummaryScreen extends StatelessWidget {
                   balance: potassiumBalance,
                   percentage: potassiumPercent,
                   status: potassiumStatus,
-                  unit: "g",
+                  unit: "mg",
                 ),
 
                 progressTile(
@@ -448,60 +497,7 @@ class ViewSummaryScreen extends StatelessWidget {
                   balance: phosphateBalance,
                   percentage: phosphatePercent,
                   status: phosphateStatus,
-                  unit: "g",
-                ),
-
-                const SizedBox(height: 8),
-
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: hasWarning
-                        ? const Color.fromARGB(255, 255, 245, 230)
-                        : const Color.fromARGB(255, 230, 250, 235),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: hasWarning
-                          ? Colors.orange.shade300
-                          : Colors.green.shade300,
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        hasWarning
-                            ? Icons.warning_amber_rounded
-                            : Icons.check_circle_outline,
-                        color: hasWarning
-                            ? const Color.fromARGB(255, 223, 13, 13)
-                            : Colors.green,
-                        size: 42,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          nutrientMessage,
-                          style: TextStyle(
-                            color: hasWarning
-                                ? Colors.red.shade700
-                                : Colors.green.shade700,
-                            fontSize: 16,
-                            height: 1.35,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  unit: "mg",
                 ),
 
                 const SizedBox(height: 24),
@@ -516,11 +512,9 @@ class ViewSummaryScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (context) => AlternativeFoodScreen(
                             currentFood: data,
-
                             mealProteinLimit: proteinLimit,
                             mealPotassiumLimit: potassiumLimit,
                             mealPhosphorusLimit: phosphateLimit,
-
                             remainingProtein: proteinBalance < 0
                                 ? 0
                                 : proteinBalance,
@@ -530,7 +524,6 @@ class ViewSummaryScreen extends StatelessWidget {
                             remainingPhosphorus: phosphateBalance < 0
                                 ? 0
                                 : phosphateBalance,
-
                             proteinStatus: proteinStatus,
                             potassiumStatus: potassiumStatus,
                             phosphorusStatus: phosphateStatus,
@@ -686,9 +679,7 @@ class ViewSummaryScreen extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
@@ -698,9 +689,7 @@ class ViewSummaryScreen extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(statusColor),
             ),
           ),
-
           const SizedBox(height: 8),
-
           Text(
             "Used today: ${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit",
             style: TextStyle(
@@ -709,9 +698,7 @@ class ViewSummaryScreen extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             balance >= 0
                 ? "Balance left today: ${formatValue(balance, unit)} $unit"
@@ -722,9 +709,7 @@ class ViewSummaryScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 8),
-
           Align(
             alignment: Alignment.centerRight,
             child: Container(
