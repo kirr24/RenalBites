@@ -12,7 +12,6 @@ class RenalProfileScreen extends StatefulWidget {
 
 class _RenalProfileScreenState extends State<RenalProfileScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
-
   bool limitsSaved = false;
 
   Future<Map<String, dynamic>?> getUserData() async {
@@ -23,26 +22,31 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
         .doc(user!.uid)
         .get();
 
-    if (doc.exists) {
-      return doc.data();
-    }
-
-    return null;
+    return doc.exists ? doc.data() : null;
   }
 
   Future<void> saveLimitstoFirestore({
+    required String calories,
     required String protein,
     required String potassium,
     required String phosphate,
+    required String water,
   }) async {
     if (user == null) return;
 
     await FirebaseFirestore.instance.collection('users').doc(user!.uid).set({
+      'caloriesLimit': calories,
       'proteinLimit': protein,
       'potassiumLimit': potassium,
       'phosphateLimit': phosphate,
+      'waterLimit': water,
       'limitsLastUpdated': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  String calculateCaloriesLimit({required double weight}) {
+    final calories = weight * 30;
+    return calories.toStringAsFixed(0);
   }
 
   String calculateProteinLimit({
@@ -53,31 +57,25 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     stage = stage.toLowerCase();
     final disease = typeOfDisease.toLowerCase();
 
-    // For Hemodialysis
     if (disease.contains('hemodialysis')) {
-      double protein = weight * 1.2;
-      return protein.toStringAsFixed(0);
+      return (weight * 1.2).toStringAsFixed(0);
     }
 
-    // For CKD
     if (stage.contains('stage 1') || stage.contains('stage 2')) {
-      double min = weight * 0.8;
-      double max = weight * 1.0;
+      final min = weight * 0.8;
+      final max = weight * 1.0;
       return "${min.toStringAsFixed(0)}-${max.toStringAsFixed(0)}";
     } else if (stage.contains('stage 3')) {
-      double min = weight * 0.6;
-      double max = weight * 0.8;
+      final min = weight * 0.6;
+      final max = weight * 0.8;
       return "${min.toStringAsFixed(0)}-${max.toStringAsFixed(0)}";
     } else if (stage.contains('stage 4')) {
-      double protein = weight * 0.6;
-      return protein.toStringAsFixed(0);
+      return (weight * 0.6).toStringAsFixed(0);
     } else if (stage.contains('stage 5')) {
       return "Doctor";
-    } else if (stage.contains('dialysis')) {
-      return "Higher";
-    } else {
-      return "N/A";
     }
+
+    return "N/A";
   }
 
   String calculatePotassiumLimit({
@@ -87,11 +85,8 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     final disease = typeOfDisease.toLowerCase();
     stage = stage.toLowerCase();
 
-    // For Hemodialysis
     if (disease.contains('hemodialysis')) {
       return "2000";
-
-      // For CKD
     } else if (stage.contains('stage 1') || stage.contains('stage 2')) {
       return "4700";
     } else if (stage.contains('stage 3')) {
@@ -100,9 +95,9 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
       return "2500";
     } else if (stage.contains('stage 5')) {
       return "2000";
-    } else {
-      return "N/A";
     }
+
+    return "N/A";
   }
 
   String calculatePhosphateLimit({
@@ -112,11 +107,10 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     final disease = typeOfDisease.toLowerCase();
     stage = stage.toLowerCase();
 
-    // For Hemodialysis and CKD Stage 5
     if (disease.contains('hemodialysis') || stage.contains('stage 5')) {
       return "800";
     }
-    // For CKD
+
     if (stage.contains('stage 1') ||
         stage.contains('stage 2') ||
         stage.contains('stage 3') ||
@@ -127,11 +121,45 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     return "N/A";
   }
 
+  String calculateWaterLimit({
+    required String typeOfDisease,
+    required String stage,
+  }) {
+    final disease = typeOfDisease.toLowerCase();
+    final stageLower = stage.toLowerCase();
+
+    if (disease.contains('hemodialysis') || stageLower.contains('stage 5')) {
+      return "0.5-0.8";
+    }
+
+    if (stageLower.contains('stage 1') ||
+        stageLower.contains('stage 2') ||
+        stageLower.contains('stage 3') ||
+        stageLower.contains('stage 4')) {
+      return "1.2-1.5";
+    }
+
+    return "As prescribed";
+  }
+
+  String waterAdviceText({
+    required String typeOfDisease,
+    required String stage,
+  }) {
+    final disease = typeOfDisease.toLowerCase();
+    final stageLower = stage.toLowerCase();
+
+    if (disease.contains('hemodialysis') || stageLower.contains('stage 5')) {
+      return "Recommended fluid intake is 0.5-0.8 litres per day, or as prescribed by your physician.";
+    }
+
+    return "Maintain 1.2-1.5 litres per day unless otherwise prescribed by your physician.";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 208, 250, 229),
-
       body: SafeArea(
         child: FutureBuilder<Map<String, dynamic>?>(
           future: getUserData(),
@@ -153,6 +181,8 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
             final String typeOfDisease =
                 data['typeOfDisease']?.toString() ?? "";
 
+            final String caloriesLimit = calculateCaloriesLimit(weight: weight);
+
             final String proteinLimit = calculateProteinLimit(
               weight: weight,
               typeOfDisease: typeOfDisease,
@@ -169,14 +199,26 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
               stage: stage,
             );
 
+            final String waterLimit = calculateWaterLimit(
+              typeOfDisease: typeOfDisease,
+              stage: stage,
+            );
+
+            final String waterAdvice = waterAdviceText(
+              typeOfDisease: typeOfDisease,
+              stage: stage,
+            );
+
             if (!limitsSaved) {
               limitsSaved = true;
 
               WidgetsBinding.instance.addPostFrameCallback((_) async {
-                saveLimitstoFirestore(
+                await saveLimitstoFirestore(
+                  calories: caloriesLimit,
                   protein: proteinLimit,
                   potassium: potassiumLimit,
                   phosphate: phosphateLimit,
+                  water: waterLimit,
                 );
               });
             }
@@ -232,9 +274,47 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                             child: SizedBox(
                               height: 125,
                               child: LimitCard(
+                                title: "Calories",
+                                value: caloriesLimit,
+                                unit: " kcal",
+                                icon: Icons.local_fire_department,
+                                bgColor: Color(0xFFB85C00),
+                                valueColor: Color(0xFFFFC107),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 125,
+                              child: LimitCard(
+                                title: "Protein",
+                                value: proteinLimit,
+                                unit:
+                                    proteinLimit == "Doctor" ||
+                                        proteinLimit == "N/A"
+                                    ? ""
+                                    : " g",
+                                icon: Icons.fitness_center,
+                                bgColor: Color(0xFF225AA8),
+                                valueColor: Color(0xFF2E9BFF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 125,
+                              child: LimitCard(
                                 title: "Potassium",
                                 value: potassiumLimit,
-                                unit: "mg",
+                                unit: potassiumLimit == "N/A" ? "" : " mg",
                                 icon: Icons.flash_on,
                                 bgColor: Color.fromARGB(255, 121, 51, 115),
                                 valueColor: Color.fromARGB(255, 202, 131, 221),
@@ -248,7 +328,7 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                               child: LimitCard(
                                 title: "Phosphate",
                                 value: phosphateLimit,
-                                unit: "mg",
+                                unit: phosphateLimit == "N/A" ? "" : " mg",
                                 icon: Icons.medication,
                                 bgColor: Color(0xFF6D3BAA),
                                 valueColor: Color(0xFFCE63FF),
@@ -256,27 +336,6 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                             ),
                           ),
                         ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Center(
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.45,
-                          height: 125,
-                          child: LimitCard(
-                            title: "Protein",
-                            value: proteinLimit,
-                            unit:
-                                proteinLimit == "Doctor" ||
-                                    proteinLimit == "N/A"
-                                ? ""
-                                : "g",
-                            icon: Icons.fitness_center,
-                            bgColor: const Color(0xFF225AA8),
-                            valueColor: const Color(0xFF2E9BFF),
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -301,31 +360,35 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                       ],
                     ),
                     child: Column(
-                      children: const [
-                        Icon(Icons.opacity, color: Color(0xFF22E6D1), size: 45),
-                        SizedBox(height: 10),
-                        Text(
-                          "DAILY FLUID LIMIT",
+                      children: [
+                        const Icon(
+                          Icons.opacity,
+                          color: Color(0xFF22E6D1),
+                          size: 45,
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "DAILY WATER INTAKE",
                           style: TextStyle(
                             color: Color(0xFF22E6D1),
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Text.rich(
                           TextSpan(
                             children: [
                               TextSpan(
-                                text: "2500",
-                                style: TextStyle(
+                                text: waterLimit,
+                                style: const TextStyle(
                                   color: Color(0xFF22DFFF),
                                   fontSize: 38,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              TextSpan(
-                                text: " ml",
+                              const TextSpan(
+                                text: " L",
                                 style: TextStyle(
                                   color: Color(0xFF22DFFF),
                                   fontSize: 18,
@@ -335,10 +398,11 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                             ],
                           ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          "Stay well hydrated",
-                          style: TextStyle(
+                          waterAdvice,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -355,7 +419,6 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
           },
         ),
       ),
-
       bottomNavigationBar: const BottomNavBar(currentIndex: 3),
     );
   }
