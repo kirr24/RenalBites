@@ -108,13 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: const Icon(Icons.email_outlined),
-                          filled: true,
-                          fillColor: const Color.fromARGB(255, 238, 250, 243),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
+                          labelText: ('Email'),
+                          icon: const Icon(Icons.email_outlined),
                         ),
                       ),
 
@@ -124,13 +119,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          filled: true,
-                          fillColor: const Color.fromARGB(255, 238, 250, 243),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
+                          labelText: ('Password'),
+                          icon: const Icon(Icons.lock_outline),
                         ),
                       ),
 

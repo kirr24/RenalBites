@@ -249,7 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const Text(
                           'Already have an account?',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             color: Colors.black87,
                             fontWeight: FontWeight.w500,
                           ),
@@ -266,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Text(
                               'Login instead',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 14,
                                 color: Color.fromARGB(255, 35, 63, 45),
                                 fontWeight: FontWeight.bold,
                               ),
