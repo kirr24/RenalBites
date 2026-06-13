@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'login_screen.dart';
 
-const Color renalGreen = Color.fromARGB(255, 50, 160, 125);
+const Color bg = Color.fromARGB(255, 50, 160, 125);
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -13,27 +13,31 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _kidneyController;
+  late AnimationController kidneyController;
 
-  bool kidneyAnimated = false;
-  bool animateRenalText = false;
+  bool showMainScreen = false;
+  bool showTitle = false;
 
   @override
   void initState() {
     super.initState();
 
-    _kidneyController = AnimationController(vsync: this);
+    kidneyController = AnimationController(vsync: this);
 
-    _kidneyController.addListener(() {
-      if (_kidneyController.value == 1.0) {
-        _kidneyController.stop();
+    kidneyController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        kidneyController.stop();
 
-        kidneyAnimated = true;
-        setState(() {});
+        setState(() {
+          showMainScreen = true;
+        });
 
         Future.delayed(const Duration(seconds: 1), () {
-          animateRenalText = true;
-          setState(() {});
+          if (mounted) {
+            setState(() {
+              showTitle = true;
+            });
+          }
         });
       }
     });
@@ -41,8 +45,17 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _kidneyController.dispose();
+    kidneyController.dispose();
     super.dispose();
+  }
+
+  void goToLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LoginScreen(showRegisterScreen: () {}),
+      ),
+    );
   }
 
   @override
@@ -50,72 +63,49 @@ class _SplashScreenState extends State<SplashScreen>
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: renalGreen,
-
+      backgroundColor: bg,
       body: Stack(
         children: [
-          // TOP WHITE CONTAINER
           AnimatedContainer(
             duration: const Duration(seconds: 1),
-
-            height: kidneyAnimated ? screenHeight / 1.9 : screenHeight,
-
+            height: showMainScreen ? screenHeight / 1.9 : screenHeight,
             decoration: BoxDecoration(
               color: const Color.fromARGB(255, 241, 242, 244),
-
               borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(kidneyAnimated ? 40.0 : 0.0),
+                bottom: Radius.circular(showMainScreen ? 40 : 0),
               ),
             ),
-
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
-
               children: [
-                // LOTTIE KIDNEY ANIMATION
-                Visibility(
-                  visible: !kidneyAnimated,
-
-                  child: Lottie.asset(
+                if (showMainScreen == false)
+                  Lottie.asset(
                     'assets/animations/kidney.json',
-
                     width: 500,
                     height: 500,
                     fit: BoxFit.contain,
-
-                    controller: _kidneyController,
-
+                    controller: kidneyController,
                     onLoaded: (composition) {
-                      _kidneyController
+                      kidneyController
                         ..duration = composition.duration
                         ..forward();
                     },
                   ),
-                ),
 
-                // STATIC KIDNEY IMAGE
-                Visibility(
-                  visible: kidneyAnimated,
-
-                  child: Image.asset(
+                if (showMainScreen == true)
+                  Image.asset(
                     'assets/images/kidneymain.png',
-
                     height: 220,
                     width: 220,
                   ),
-                ),
 
-                // RENALBITES TEXT
                 Center(
                   child: AnimatedOpacity(
-                    opacity: animateRenalText ? 1 : 0,
-
+                    opacity: showTitle ? 1 : 0,
                     duration: const Duration(seconds: 1),
-
                     child: const Text(
                       'RenalBites',
-
                       style: TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.bold,
@@ -129,97 +119,70 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // BOTTOM PART
-          Visibility(visible: kidneyAnimated, child: const _BottomPart()),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomPart extends StatelessWidget {
-  const _BottomPart({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-
-          children: [
-            const Text(
-              'Take Control of Your Kidney Health',
-
-              textAlign: TextAlign.left,
-
-              style: TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 7, 50, 42),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            Text(
-              'Track nutrients, discover kidney-friendly meals, '
-              'and manage your renal diet with confidence and ease.',
-
-              textAlign: TextAlign.left,
-
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 7, 50, 42).withOpacity(0.8),
-                height: 1.5,
-              ),
-            ),
-
-            const SizedBox(height: 50),
-
+          if (showMainScreen == true)
             Align(
-              alignment: Alignment.centerRight,
-
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          LoginScreen(showRegisterScreen: () {}),
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Take Control of Your Kidney Health',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 7, 50, 42),
+                      ),
                     ),
-                  );
-                },
 
-                child: Container(
-                  height: 85,
-                  width: 85,
+                    const SizedBox(height: 15),
 
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    Text(
+                      'Track nutrients, discover kidney-friendly meals, '
+                      'and manage your renal diet with confidence and ease.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: const Color.fromARGB(
+                          255,
+                          7,
+                          50,
+                          42,
+                        ).withOpacity(0.8),
+                        height: 1.5,
+                      ),
+                    ),
 
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
+                    const SizedBox(height: 50),
 
-                  child: const Icon(
-                    Icons.keyboard_arrow_up,
-                    size: 50,
-                    color: Colors.white,
-                  ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: goToLogin,
+                        child: Container(
+                          height: 85,
+                          width: 85,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.keyboard_arrow_up,
+                            size: 50,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 50),
+                  ],
                 ),
               ),
             ),
-
-            const SizedBox(height: 50),
-          ],
-        ),
+        ],
       ),
     );
   }
