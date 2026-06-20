@@ -1,8 +1,5 @@
-// ignore_for_file: equal_keys_in_map
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:renalbites/screens/editprofile_screen.dart';
 import 'package:renalbites/screens/kidneydiseaseinfo_screen.dart';
 import 'package:renalbites/screens/recipes_screen.dart';
@@ -14,13 +11,9 @@ import 'viewsummary_screen.dart';
 import 'userprofile_screen.dart';
 
 class FoodInput {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController quantityController = TextEditingController();
+  String? selectedFoodName;
 
-  void dispose() {
-    nameController.dispose();
-    quantityController.dispose();
-  }
+  void dispose() {}
 }
 
 class HomePage extends StatefulWidget {
@@ -36,7 +29,26 @@ class _HomePageState extends State<HomePage> {
 
   bool _isLoading = false;
   bool _isSaving = false;
+
   String? selectedMealType;
+  String? selectedCategory;
+
+  final List<String> category = [
+    'Buah-buahan',
+    'Sayur-sayuran',
+    'Hidangan Nasi',
+    'Mi dan Pasta',
+    'Roti, Sandwic dan Bun',
+    'Makanan India',
+    'Hidangan Ayam',
+    'Hidangan Daging Merah',
+    'Ikan dan Makanan Laut',
+    'Kekacang dan Legum',
+    'Hidangan Bubur',
+    'Snek dan Makanan Bergoreng',
+    'Kuih-muih',
+    'Minuman dan Bahan Minuman',
+  ];
 
   late DateTime date;
 
@@ -61,49 +73,20 @@ class _HomePageState extends State<HomePage> {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
-  String normalizeFoodName(String name) {
-    return name.toLowerCase().trim().replaceAll(' ', '_');
-  }
-
   Future<Map<String, dynamic>?> getFoodFromFirebase(String foodName) async {
     final searchName = foodName.toLowerCase().trim();
-    final docId = normalizeFoodName(foodName);
 
-    final doc = await FirebaseFirestore.instance
+    final query = await FirebaseFirestore.instance
         .collection('foods')
-        .doc(docId)
-        .get();
-
-    if (doc.exists) return doc.data();
-
-    final malayQuery = await FirebaseFirestore.instance
-        .collection('foods')
-        .where('malayNameLower', isEqualTo: searchName)
+        .where('name', isEqualTo: searchName)
         .limit(1)
         .get();
 
-    if (malayQuery.docs.isNotEmpty) {
-      return malayQuery.docs.first.data();
-    }
-
-    final englishQuery = await FirebaseFirestore.instance
-        .collection('foods')
-        .where('englishNameLower', isEqualTo: searchName)
-        .limit(1)
-        .get();
-
-    if (englishQuery.docs.isNotEmpty) {
-      return englishQuery.docs.first.data();
+    if (query.docs.isNotEmpty) {
+      return query.docs.first.data();
     }
 
     return null;
-  }
-
-  String getDisplayFoodName(Map<String, dynamic> data, String typedName) {
-    return data['malayName']?.toString() ??
-        data['englishName']?.toString() ??
-        data['name']?.toString() ??
-        typedName;
   }
 
   Future<Map<String, dynamic>?> prepareMealResult() async {
@@ -122,22 +105,12 @@ class _HomePageState extends State<HomePage> {
     List<Map<String, dynamic>> foodDetails = [];
 
     for (final food in foodInputs) {
-      final foodName = food.nameController.text.trim();
-      final quantityText = food.quantityController.text.trim();
+      final foodName = food.selectedFoodName;
 
-      if (foodName.isEmpty || quantityText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all food fields')),
-        );
-        return null;
-      }
-
-      final double? quantity = double.tryParse(quantityText);
-
-      if (quantity == null || quantity <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid quantity')),
-        );
+      if (foodName == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Please select food')));
         return null;
       }
 
@@ -150,15 +123,11 @@ class _HomePageState extends State<HomePage> {
         return null;
       }
 
-      final double caloriesPer100g = toDouble(firebaseData['calories']);
-      final double proteinPer100g = toDouble(firebaseData['protein']);
-      final double potassiumPer100g = toDouble(firebaseData['potassium']);
-      final double phosphatePer100g = toDouble(firebaseData['phosphate']);
-
-      final double calories = caloriesPer100g * quantity / 100;
-      final double protein = proteinPer100g * quantity / 100;
-      final double potassium = potassiumPer100g * quantity / 100;
-      final double phosphate = phosphatePer100g * quantity / 100;
+      final double calories = toDouble(firebaseData['calories']);
+      final double protein = toDouble(firebaseData['protein']);
+      final double potassium = toDouble(firebaseData['potassium']);
+      final double phosphate = toDouble(firebaseData['phosphate']);
+      final double servingSize = toDouble(firebaseData['servingSize']);
 
       totalCalories += calories;
       totalProtein += protein;
@@ -166,17 +135,17 @@ class _HomePageState extends State<HomePage> {
       totalPhosphate += phosphate;
 
       foodDetails.add({
-        "mealName": getDisplayFoodName(firebaseData, foodName),
-        "quantity": quantity,
-        "serving": "100g",
+        "mealName": foodName,
+        "servingSize": servingSize,
+        "serving": "${servingSize.toStringAsFixed(0)} g",
         "calories": calories,
         "protein": protein,
         "potassium": potassium,
         "phosphate": phosphate,
-        "caloriesPer100g": caloriesPer100g,
-        "proteinPer100g": proteinPer100g,
-        "potassiumPer100g": potassiumPer100g,
-        "phosphatePer100g": phosphatePer100g,
+        "caloriesPerServing": calories,
+        "proteinPerServing": protein,
+        "potassiumPerServing": potassium,
+        "phosphatePerServing": phosphate,
         "foodData": firebaseData,
       });
     }
@@ -300,12 +269,8 @@ class _HomePageState extends State<HomePage> {
   void resetForm() {
     setState(() {
       selectedMealType = null;
-
+      selectedCategory = null;
       date = DateTime.now();
-
-      for (final food in foodInputs) {
-        food.dispose();
-      }
 
       foodInputs.clear();
       foodInputs.add(FoodInput());
@@ -330,6 +295,34 @@ class _HomePageState extends State<HomePage> {
           fontWeight: FontWeight.bold,
           color: Color.fromARGB(255, 35, 63, 45),
         ),
+      ),
+    );
+  }
+
+  Widget noteBox() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 255, 249, 220),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Colors.orange),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Note: The app uses the standard serving size stored in the system for each food.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color.fromARGB(255, 80, 70, 40),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -397,7 +390,7 @@ class _HomePageState extends State<HomePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: const Color.fromARGB(255, 35, 63, 45), size: 22),
+            Icon(icon, color: Color.fromARGB(255, 35, 63, 45), size: 22),
             const SizedBox(width: 10),
             Text(
               text,
@@ -409,6 +402,115 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget foodDropdown(FoodInput food) {
+    if (selectedCategory == null) {
+      return const Text(
+        'Please select food category first',
+        style: TextStyle(color: Colors.grey),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('foods')
+          .where('category', isEqualTo: selectedCategory)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(8),
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Text('No foods found');
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return DropdownButton<String>(
+          value: food.selectedFoodName,
+          hint: const Text('Select Food'),
+          isExpanded: true,
+          underline: const SizedBox(),
+          items: docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final foodName = data['name'].toString();
+
+            return DropdownMenuItem<String>(
+              value: foodName,
+              child: Text(foodName),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              food.selectedFoodName = value;
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Widget foodInputCard(int index) {
+    final food = foodInputs[index];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.restaurant,
+                color: Color.fromARGB(255, 35, 63, 45),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: foodDropdown(food)),
+            ],
+          ),
+
+          Divider(color: Colors.grey.shade300),
+
+          if (foodInputs.length > 1)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    foodInputs.removeAt(index);
+                  });
+                },
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                label: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -480,9 +582,7 @@ class _HomePageState extends State<HomePage> {
                                 )
                               : null,
                         ),
-
                         const SizedBox(height: 12),
-
                         Text(
                           username,
                           style: const TextStyle(
@@ -598,42 +698,29 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.green.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 218, 245, 226),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.calendar_month,
-                      color: Color.fromARGB(255, 35, 63, 45),
-                      size: 22,
-                    ),
+                  const Icon(
+                    Icons.calendar_month,
+                    color: Color.fromARGB(255, 35, 63, 45),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      getFormattedDate(),
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(255, 35, 63, 45),
-                      ),
+                  Text(
+                    getFormattedDate(),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 35, 63, 45),
                     ),
                   ),
                 ],
               ),
             ),
+
+            const SizedBox(height: 18),
+
+            noteBox(),
 
             const SizedBox(height: 18),
 
@@ -645,13 +732,6 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.green.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: DropdownButton<String>(
                 value: selectedMealType,
@@ -669,6 +749,40 @@ class _HomePageState extends State<HomePage> {
                 onChanged: (String? newValue) {
                   setState(() {
                     selectedMealType = newValue;
+                  });
+                },
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            sectionTitle("Food Category"),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green.shade100),
+              ),
+              child: DropdownButton<String>(
+                value: selectedCategory,
+                hint: const Text('Select Food Category'),
+                isExpanded: true,
+                underline: const SizedBox(),
+                items: category.map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedCategory = newValue;
+
+                    for (final food in foodInputs) {
+                      food.selectedFoodName = null;
+                    }
                   });
                 },
               ),
@@ -705,105 +819,7 @@ class _HomePageState extends State<HomePage> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: foodInputs.length,
               itemBuilder: (context, index) {
-                final food = foodInputs[index];
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.restaurant,
-                            color: Color.fromARGB(255, 35, 63, 45),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: food.nameController,
-                              decoration: InputDecoration(
-                                hintText: 'Food ${index + 1}, e.g. nasi putih',
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      Divider(color: Colors.grey.shade300),
-
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.scale,
-                            color: Color.fromARGB(255, 35, 63, 45),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: food.quantityController,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'^\d*\.?\d*$'),
-                                ),
-                              ],
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                hintText: 'Quantity',
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          const Text(
-                            'grams',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Color.fromARGB(255, 35, 63, 45),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      if (foodInputs.length > 1)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                food.dispose();
-                                foodInputs.removeAt(index);
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            label: const Text(
-                              'Remove',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
+                return foodInputCard(index);
               },
             ),
 

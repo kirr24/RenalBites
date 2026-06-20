@@ -15,38 +15,37 @@ class EditprofileScreen extends StatefulWidget {
 }
 
 class _EditprofileScreenState extends State<EditprofileScreen> {
-  final TextEditingController _userIdController = TextEditingController();
-  final TextEditingController _fullNameController = TextEditingController();
+  final userIdController = TextEditingController();
+  final fullNameController = TextEditingController();
+  final ageController = TextEditingController();
+  final heightController = TextEditingController();
+  final weightController = TextEditingController();
 
-  Uint8List? _profileImage;
-  String _oldUserId = "";
-  String _photoUrl = "";
+  Uint8List? profileImage;
 
-  bool _isLoading = true;
-  bool _isSaving = false;
+  String oldUserId = "";
+  String photoUrl = "";
 
-  String? _selectedGender;
-  String? _selectedDisease;
-  String? _selectedStage;
+  bool isLoading = true;
+  bool isSaving = false;
 
-  double _age = 25;
-  double _height = 160;
-  double _weight = 60;
+  String? selectedGender;
+  String? selectedDisease;
+  String? selectedStage;
 
-  final List<String> _genderOptions = ['Male', 'Female'];
-
-  final List<String> _diseaseOptions = [
-    'Hemodialysis',
-    'Chronic Kidney Disease',
-  ];
-
-  final List<String> _stageOptions = [
+  List<String> genderList = ['Male', 'Female'];
+  List<String> diseaseList = ['Hemodialysis', 'Chronic Kidney Disease'];
+  List<String> stageList = [
     'Stage 1',
     'Stage 2',
     'Stage 3',
     'Stage 4',
     'Stage 5',
   ];
+
+  bool get needsStage {
+    return selectedDisease != null && selectedDisease != 'Hemodialysis';
+  }
 
   @override
   void initState() {
@@ -56,73 +55,87 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
 
   @override
   void dispose() {
-    _userIdController.dispose();
-    _fullNameController.dispose();
+    userIdController.dispose();
+    fullNameController.dispose();
+    ageController.dispose();
+    heightController.dispose();
+    weightController.dispose();
     super.dispose();
   }
 
   Future<void> loadUserData() async {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      setState(() => _isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
       return;
     }
 
-    final doc = await FirebaseFirestore.instance
+    DocumentSnapshot doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .get();
 
     if (doc.exists) {
-      final data = doc.data()!;
+      final data = doc.data() as Map<String, dynamic>;
 
       setState(() {
-        _userIdController.text = data['userId']?.toString() ?? "";
-        _fullNameController.text = data['fullName']?.toString() ?? "";
+        userIdController.text = data['userId']?.toString() ?? '';
+        fullNameController.text = data['fullName']?.toString() ?? '';
+        ageController.text = data['age']?.toString() ?? '';
+        heightController.text = data['height']?.toString() ?? '';
+        weightController.text = data['weight']?.toString() ?? '';
 
-        _oldUserId = data['userId']?.toString() ?? "";
-        _photoUrl = data['photoUrl']?.toString() ?? "";
+        oldUserId = data['userId']?.toString() ?? '';
+        photoUrl = data['photoUrl']?.toString() ?? '';
 
-        _age = double.tryParse(data['age'].toString()) ?? 25;
-        _height = double.tryParse(data['height'].toString()) ?? 160;
-        _weight = double.tryParse(data['weight'].toString()) ?? 60;
+        selectedGender = data['gender']?.toString();
+        selectedDisease = data['typeOfDisease']?.toString();
 
-        _selectedGender = data['gender']?.toString();
-        _selectedDisease = data['typeOfDisease']?.toString();
-        _selectedStage = data['stage']?.toString();
+        String savedStage = data['stage']?.toString() ?? '';
 
-        _isLoading = false;
+        if (selectedDisease == 'Hemodialysis') {
+          selectedStage = null;
+        } else if (stageList.contains(savedStage)) {
+          selectedStage = savedStage;
+        }
+
+        isLoading = false;
       });
     } else {
-      setState(() => _isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   Future<void> selectImage() async {
-    Uint8List? img = await pickImage(ImageSource.gallery);
+    Uint8List? image = await pickImage(ImageSource.gallery);
 
-    if (img != null) {
+    if (image != null) {
       setState(() {
-        _profileImage = img;
+        profileImage = image;
       });
     }
   }
 
-  Future<String> uploadImageToStorage(String uid) async {
-    final storageRef = FirebaseStorage.instance
+  Future<String> uploadProfilePic(String uid) async {
+    Reference ref = FirebaseStorage.instance
         .ref()
         .child('profilePics')
         .child('$uid.jpg');
 
-    UploadTask uploadTask = storageRef.putData(_profileImage!);
+    UploadTask uploadTask = ref.putData(profileImage!);
     TaskSnapshot snapshot = await uploadTask;
 
-    return await snapshot.ref.getDownloadURL();
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
   }
 
-  Future<bool> isUserIdAvailable(String userId) async {
-    final doc = await FirebaseFirestore.instance
+  Future<bool> checkUserID(String userId) async {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
         .collection('usernames')
         .doc(userId.toLowerCase())
         .get();
@@ -131,7 +144,7 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
   }
 
   Future<void> updateProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
       ScaffoldMessenger.of(
@@ -140,16 +153,33 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
       return;
     }
 
-    final String newUserId = _userIdController.text.trim();
-    final String fullName = _fullNameController.text.trim();
+    String newUserId = userIdController.text.trim();
+    String fullName = fullNameController.text.trim();
+    String ageText = ageController.text.trim();
+    String heightText = heightController.text.trim();
+    String weightText = weightController.text.trim();
 
     if (newUserId.isEmpty ||
         fullName.isEmpty ||
-        _selectedGender == null ||
-        _selectedDisease == null ||
-        _selectedStage == null) {
+        ageText.isEmpty ||
+        heightText.isEmpty ||
+        weightText.isEmpty ||
+        selectedGender == null ||
+        selectedDisease == null ||
+        (needsStage && selectedStage == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    int? age = int.tryParse(ageText);
+    double? height = double.tryParse(heightText);
+    double? weight = double.tryParse(weightText);
+
+    if (age == null || height == null || weight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid numbers')),
       );
       return;
     }
@@ -169,12 +199,12 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     }
 
     setState(() {
-      _isSaving = true;
+      isSaving = true;
     });
 
     try {
-      if (newUserId.toLowerCase() != _oldUserId.toLowerCase()) {
-        final available = await isUserIdAvailable(newUserId);
+      if (newUserId.toLowerCase() != oldUserId.toLowerCase()) {
+        bool available = await checkUserID(newUserId);
 
         if (!available) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -182,15 +212,16 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
           );
 
           setState(() {
-            _isSaving = false;
+            isSaving = false;
           });
+
           return;
         }
 
-        if (_oldUserId.isNotEmpty) {
+        if (oldUserId.isNotEmpty) {
           await FirebaseFirestore.instance
               .collection('usernames')
-              .doc(_oldUserId.toLowerCase())
+              .doc(oldUserId.toLowerCase())
               .delete();
         }
 
@@ -200,11 +231,13 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
             .set({'uid': user.uid});
       }
 
-      String finalPhotoUrl = _photoUrl;
+      String finalPhotoUrl = photoUrl;
 
-      if (_profileImage != null) {
-        finalPhotoUrl = await uploadImageToStorage(user.uid);
+      if (profileImage != null) {
+        finalPhotoUrl = await uploadProfilePic(user.uid);
       }
+
+      String stage = selectedDisease == 'Hemodialysis' ? 'N/A' : selectedStage!;
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -212,32 +245,31 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
           .update({
             'fullName': fullName,
             'userId': newUserId,
-            'age': _age.round(),
-            'gender': _selectedGender,
-            'height': _height,
-            'weight': _weight,
-            'typeOfDisease': _selectedDisease,
-            'stage': _selectedStage,
+            'age': age,
+            'gender': selectedGender,
+            'height': height,
+            'weight': weight,
+            'typeOfDisease': selectedDisease,
+            'stage': stage,
             'photoUrl': finalPhotoUrl,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
       if (!mounted) return;
 
-      await showDialog(
+      showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text("Profile Updated"),
-            content: const Text(
-              "Your information has been updated successfully.",
-            ),
+            title: const Text('Profile Updated'),
+            content: const Text('Your profile has been updated successfully.'),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
+                  Navigator.pop(context);
                 },
-                child: const Text("OK"),
+                child: const Text('OK'),
               ),
             ],
           );
@@ -246,106 +278,58 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
-    } finally {
-      if (!mounted) return;
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+
+    if (mounted) {
       setState(() {
-        _isSaving = false;
+        isSaving = false;
       });
     }
   }
 
-  InputDecoration customInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white,
-      labelStyle: TextStyle(color: Colors.green[900]),
-      prefixIcon: Icon(icon, color: Colors.green[900]),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.green.shade200, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+  Widget textInput({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: const Color.fromARGB(255, 246, 246, 246),
       ),
     );
   }
 
-  Widget buildSectionCard({required Widget child}) {
+  Widget cardBox({required Widget child}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: const Color.fromARGB(255, 246, 246, 246),
+        border: Border.all(color: Colors.green),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: child,
     );
   }
 
-  Widget buildSliderField({
-    required String title,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String unit,
-    required Function(double) onChanged,
-    required IconData icon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: Colors.green[800]),
-            const SizedBox(width: 8),
-            Text(
-              '$title: ${value.round()} $unit',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.green[900],
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          label: '${value.round()} $unit',
-          onChanged: (newValue) {
-            setState(() {
-              onChanged(newValue);
-            });
-          },
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
     ImageProvider profileProvider;
 
-    if (_profileImage != null) {
-      profileProvider = MemoryImage(_profileImage!);
-    } else if (_photoUrl.isNotEmpty) {
-      profileProvider = NetworkImage(_photoUrl);
+    if (profileImage != null) {
+      profileProvider = MemoryImage(profileImage!);
+    } else if (photoUrl.isNotEmpty) {
+      profileProvider = NetworkImage(photoUrl);
     } else {
       profileProvider = const NetworkImage(
         'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80',
@@ -355,231 +339,169 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 224, 247, 233),
       appBar: AppBar(
+        title: const Text('Edit Profile'),
         centerTitle: true,
-        title: const Text(
-          "Edit Profile",
-          style: TextStyle(
-            color: Color.fromARGB(255, 251, 251, 251),
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
       ),
-
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 30),
               child: Column(
                 children: [
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 13, 89, 86),
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: Column(
-                      children: [
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 55,
-                              backgroundColor: Colors.white,
-                              backgroundImage: profileProvider,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: InkWell(
-                                onTap: selectImage,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.add_a_photo,
-                                    color: Colors.green[800],
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          user?.email ?? 'No Email',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Update your personal health profile',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
+                  const SizedBox(height: 20),
+
+                  GestureDetector(
+                    onTap: selectImage,
+                    child: CircleAvatar(
+                      radius: 55,
+                      backgroundColor: Colors.grey,
+                      backgroundImage: profileProvider,
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  buildSectionCard(
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _userIdController,
-                          decoration: customInputDecoration(
-                            'User ID',
-                            Icons.person,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _fullNameController,
-                          decoration: customInputDecoration(
-                            'Full Name',
-                            Icons.badge,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const Text('Tap image to change profile picture'),
 
-                  buildSectionCard(
+                  const SizedBox(height: 5),
+
+                  Text(user?.email ?? 'No email'),
+
+                  cardBox(
                     child: Column(
                       children: [
-                        buildSliderField(
-                          title: 'Age',
-                          value: _age,
-                          min: 1,
-                          max: 100,
-                          divisions: 99,
-                          unit: 'years',
+                        textInput(
+                          controller: userIdController,
+                          label: 'User ID',
+                          icon: Icons.person,
+                        ),
+                        const SizedBox(height: 15),
+                        textInput(
+                          controller: fullNameController,
+                          label: 'Full Name',
+                          icon: Icons.badge,
+                        ),
+                        const SizedBox(height: 15),
+                        textInput(
+                          controller: ageController,
+                          label: 'Age',
                           icon: Icons.cake,
-                          onChanged: (value) => _age = value,
+                          keyboardType: TextInputType.number,
                         ),
-                        const SizedBox(height: 10),
-                        buildSliderField(
-                          title: 'Height',
-                          value: _height,
-                          min: 100,
-                          max: 220,
-                          divisions: 120,
-                          unit: 'cm',
+                        const SizedBox(height: 15),
+                        textInput(
+                          controller: heightController,
+                          label: 'Height (cm)',
                           icon: Icons.height,
-                          onChanged: (value) => _height = value,
+                          keyboardType: TextInputType.number,
                         ),
-                        const SizedBox(height: 10),
-                        buildSliderField(
-                          title: 'Weight',
-                          value: _weight,
-                          min: 20,
-                          max: 200,
-                          divisions: 180,
-                          unit: 'kg',
+                        const SizedBox(height: 15),
+                        textInput(
+                          controller: weightController,
+                          label: 'Weight (kg)',
                           icon: Icons.monitor_weight,
-                          onChanged: (value) => _weight = value,
+                          keyboardType: TextInputType.number,
                         ),
                       ],
                     ),
                   ),
 
-                  buildSectionCard(
+                  cardBox(
                     child: Column(
                       children: [
                         DropdownButtonFormField<String>(
-                          value: _selectedGender,
-                          decoration: customInputDecoration('Gender', Icons.wc),
-                          items: _genderOptions.map((gender) {
-                            return DropdownMenuItem<String>(
+                          value: selectedGender,
+                          decoration: const InputDecoration(
+                            labelText: 'Gender',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          items: genderList.map((gender) {
+                            return DropdownMenuItem(
                               value: gender,
                               child: Text(gender),
                             );
                           }).toList(),
                           onChanged: (value) {
                             setState(() {
-                              _selectedGender = value;
+                              selectedGender = value;
                             });
                           },
                         ),
-                        const SizedBox(height: 14),
+
+                        const SizedBox(height: 15),
+
                         DropdownButtonFormField<String>(
-                          value: _selectedDisease,
-                          decoration: customInputDecoration(
-                            'Type of Disease',
-                            Icons.medical_services,
+                          value: selectedDisease,
+                          decoration: const InputDecoration(
+                            labelText: 'Type of Disease',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
                           ),
-                          items: _diseaseOptions.map((disease) {
-                            return DropdownMenuItem<String>(
+                          items: diseaseList.map((disease) {
+                            return DropdownMenuItem(
                               value: disease,
                               child: Text(disease),
                             );
                           }).toList(),
                           onChanged: (value) {
                             setState(() {
-                              _selectedDisease = value;
+                              selectedDisease = value;
+
+                              if (value == 'Hemodialysis') {
+                                selectedStage = null;
+                              }
                             });
                           },
                         ),
-                        const SizedBox(height: 14),
-                        DropdownButtonFormField<String>(
-                          value: _selectedStage,
-                          decoration: customInputDecoration(
-                            'Stage of Disease',
-                            Icons.medical_services,
+
+                        if (needsStage) ...[
+                          const SizedBox(height: 15),
+                          DropdownButtonFormField<String>(
+                            value: selectedStage,
+                            decoration: const InputDecoration(
+                              labelText: 'Stage of Disease',
+                              border: OutlineInputBorder(),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            items: stageList.map((stage) {
+                              return DropdownMenuItem(
+                                value: stage,
+                                child: Text(stage),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedStage = value;
+                              });
+                            },
                           ),
-                          items: _stageOptions.map((stage) {
-                            return DropdownMenuItem<String>(
-                              value: stage,
-                              child: Text(stage),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStage = value;
-                            });
-                          },
-                        ),
+                        ],
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 8),
-
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(15),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 54,
+                      height: 50,
                       child: ElevatedButton(
-                        onPressed: _isSaving ? null : updateProfile,
+                        onPressed: isSaving ? null : updateProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green[800],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 3,
                         ),
-                        child: _isSaving
+                        child: isSaving
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
                             : const Text(
                                 'Update Profile',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                                style: TextStyle(color: Colors.white),
                               ),
                       ),
                     ),

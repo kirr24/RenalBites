@@ -5,7 +5,7 @@ import 'package:renalbites/utils.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'homepage_screen.dart'; // Adjust the path to where HomePageScreen is defined
+import 'homepage_screen.dart';
 
 class CreateprofileScreen extends StatefulWidget {
   final VoidCallback showRegisterScreen;
@@ -17,30 +17,22 @@ class CreateprofileScreen extends StatefulWidget {
 }
 
 class _CreateprofileScreenState extends State<CreateprofileScreen> {
-  final TextEditingController _userIdController = TextEditingController();
-  final TextEditingController _fullNameController = TextEditingController();
+  final userIdController = TextEditingController();
+  final fullNameController = TextEditingController();
+  final ageController = TextEditingController();
+  final heightController = TextEditingController();
+  final weightController = TextEditingController();
 
-  Uint8List? _profileImage;
+  Uint8List? profileImage;
   bool _isLoading = false;
 
-  String? _selectedGender;
-  String? _selectedDisease;
-  String? _selectedStage;
+  String? selectedGender;
+  String? selectedDisease;
+  String? selectedStage;
 
-  bool get _needsStage => _selectedDisease != 'Hemodialysis';
-
-  double _age = 25;
-  double _height = 160;
-  double _weight = 60;
-
-  final List<String> _genderOptions = ['Male', 'Female'];
-
-  final List<String> _diseaseOptions = [
-    'Hemodialysis',
-    'Chronic Kidney Disease',
-  ];
-
-  final List<String> _stageOptions = [
+  List<String> genderList = ['Male', 'Female'];
+  List<String> diseaseList = ['Hemodialysis', 'Chronic Kidney Disease'];
+  List<String> stageList = [
     'Stage 1',
     'Stage 2',
     'Stage 3',
@@ -48,36 +40,44 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
     'Stage 5',
   ];
 
+  bool get needsStage {
+    return selectedDisease != null && selectedDisease != 'Hemodialysis';
+  }
+
   @override
   void dispose() {
-    _userIdController.dispose();
-    _fullNameController.dispose();
+    userIdController.dispose();
+    fullNameController.dispose();
+    ageController.dispose();
+    heightController.dispose();
+    weightController.dispose();
     super.dispose();
   }
 
   Future<void> selectImage() async {
-    Uint8List? img = await pickImage(ImageSource.gallery);
+    Uint8List? image = await pickImage(ImageSource.gallery);
 
-    if (img != null) {
+    if (image != null) {
       setState(() {
-        _profileImage = img;
+        profileImage = image;
       });
     }
   }
 
-  Future<String> uploadImageToStorage(String uid) async {
-    final storageRef = FirebaseStorage.instance
+  Future<String> uploadProfilePic(String uid) async {
+    Reference ref = FirebaseStorage.instance
         .ref()
         .child('profilePics')
         .child('$uid.jpg');
 
-    UploadTask uploadTask = storageRef.putData(_profileImage!);
+    UploadTask uploadTask = ref.putData(profileImage!);
     TaskSnapshot snapshot = await uploadTask;
 
-    return await snapshot.ref.getDownloadURL();
+    String downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
   }
 
-  Future<bool> isUserIdAvailable(String userId) async {
+  Future<bool> checkUserID(String userId) async {
     final doc = await FirebaseFirestore.instance
         .collection('usernames')
         .doc(userId.toLowerCase())
@@ -87,7 +87,7 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
   }
 
   Future<void> saveProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
       ScaffoldMessenger.of(
@@ -96,24 +96,33 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
       return;
     }
 
-    final String userId = _userIdController.text.trim();
-    final String fullName = _fullNameController.text.trim();
-    final int age = _age.round();
-    final String? gender = _selectedGender;
-    final double height = _height;
-    final double weight = _weight;
-    final String? typeOfDisease = _selectedDisease;
-    final String? stage = typeOfDisease == 'Hemodialysis'
-        ? 'Not Applicable'
-        : _selectedStage;
+    String userId = userIdController.text.trim();
+    String fullName = fullNameController.text.trim();
+    String ageText = ageController.text.trim();
+    String heightText = heightController.text.trim();
+    String weightText = weightController.text.trim();
 
     if (userId.isEmpty ||
         fullName.isEmpty ||
-        gender == null ||
-        typeOfDisease == null ||
-        (_needsStage && _selectedStage == null)) {
+        ageText.isEmpty ||
+        heightText.isEmpty ||
+        weightText.isEmpty ||
+        selectedGender == null ||
+        selectedDisease == null ||
+        (needsStage && selectedStage == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    int? age = int.tryParse(ageText);
+    double? height = double.tryParse(heightText);
+    double? weight = double.tryParse(weightText);
+
+    if (age == null || height == null || weight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid numbers')),
       );
       return;
     }
@@ -137,7 +146,7 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
     });
 
     try {
-      final bool available = await isUserIdAvailable(userId);
+      bool available = await checkUserID(userId);
 
       if (!available) {
         ScaffoldMessenger.of(
@@ -147,14 +156,17 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
         setState(() {
           _isLoading = false;
         });
+
         return;
       }
 
       String photoUrl = '';
 
-      if (_profileImage != null) {
-        photoUrl = await uploadImageToStorage(user.uid);
+      if (profileImage != null) {
+        photoUrl = await uploadProfilePic(user.uid);
       }
+
+      String stage = selectedDisease == 'Hemodialysis' ? 'N/A' : selectedStage!;
 
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'uid': user.uid,
@@ -162,10 +174,10 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
         'fullName': fullName,
         'userId': userId,
         'age': age,
-        'gender': gender,
+        'gender': selectedGender,
         'height': height,
         'weight': weight,
-        'typeOfDisease': typeOfDisease,
+        'typeOfDisease': selectedDisease,
         'stage': stage,
         'photoUrl': photoUrl,
         'createdAt': FieldValue.serverTimestamp(),
@@ -180,36 +192,29 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
 
       showDialog(
         context: context,
-
         builder: (context) {
           return AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-
             title: const Text(
               'Profile Saved',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-
             content: const Text('Your profile has been created successfully.'),
-
             actions: [
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[800],
                 ),
-
                 onPressed: () {
                   Navigator.pop(context);
 
                   Navigator.pushReplacement(
                     context,
-
                     MaterialPageRoute(builder: (context) => HomePage()),
                   );
                 },
-
                 child: const Text('OK', style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -219,288 +224,203 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save profile: $e')));
-    } finally {
-      if (!mounted) return;
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
 
+    if (mounted) {
       setState(() {
         _isLoading = false;
       });
     }
   }
 
-  InputDecoration customInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white,
-      labelStyle: TextStyle(color: Colors.green[900]),
-      prefixIcon: Icon(icon, color: Colors.green[900]),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.green.shade200, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+  Widget textInput({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
       ),
     );
   }
 
-  Widget buildSectionCard({required Widget child}) {
+  Widget cardBox({required Widget child}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white,
+        border: Border.all(color: Colors.green),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: child,
     );
   }
 
-  Widget buildSliderField({
-    required String title,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String unit,
-    required Function(double) onChanged,
-    required IconData icon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: Colors.green[800]),
-            const SizedBox(width: 8),
-            Text(
-              '$title: ${value.round()} $unit',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.green[900],
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          label: '${value.round()} $unit',
-          onChanged: (newValue) {
-            setState(() {
-              onChanged(newValue);
-            });
-          },
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 224, 247, 233),
       appBar: AppBar(
-        title: const Text(
-          'Create Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Create Profile'),
         centerTitle: true,
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 30),
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 13, 89, 86),
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Colors.white,
-                        backgroundImage: _profileImage != null
-                            ? MemoryImage(_profileImage!)
-                            : const NetworkImage(
-                                'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80',
-                              ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: InkWell(
-                          onTap: selectImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.add_a_photo,
-                              color: Colors.green[800],
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.email ?? 'No Email',
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Set up your personal health profile',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
+            const SizedBox(height: 20),
+
+            GestureDetector(
+              onTap: selectImage,
+              child: CircleAvatar(
+                radius: 55,
+                backgroundColor: Colors.grey,
+                backgroundImage: profileImage != null
+                    ? MemoryImage(profileImage!)
+                    : const NetworkImage(
+                            'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80',
+                          )
+                          as ImageProvider,
               ),
             ),
 
             const SizedBox(height: 10),
 
-            buildSectionCard(
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _userIdController,
-                    decoration: customInputDecoration('User ID', Icons.person),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _fullNameController,
-                    decoration: customInputDecoration('Full Name', Icons.badge),
-                  ),
-                ],
+            const Text(
+              'Tap image to select profile picture',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color.fromARGB(255, 17, 41, 12),
+                fontWeight: FontWeight.bold,
               ),
             ),
 
-            buildSectionCard(
+            const SizedBox(height: 5),
+
+            Text(user?.email ?? 'No email'),
+
+            cardBox(
               child: Column(
                 children: [
-                  buildSliderField(
-                    title: 'Age',
-                    value: _age,
-                    min: 1,
-                    max: 100,
-                    divisions: 99,
-                    unit: 'years',
+                  textInput(
+                    controller: userIdController,
+                    label: 'User ID',
+                    icon: Icons.person,
+                  ),
+                  const SizedBox(height: 15),
+                  textInput(
+                    controller: fullNameController,
+                    label: 'Full Name',
+                    icon: Icons.badge,
+                  ),
+                  const SizedBox(height: 15),
+                  textInput(
+                    controller: ageController,
+                    label: 'Age',
                     icon: Icons.cake,
-                    onChanged: (value) => _age = value,
+                    keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 10),
-                  buildSliderField(
-                    title: 'Height',
-                    value: _height,
-                    min: 100,
-                    max: 220,
-                    divisions: 120,
-                    unit: 'cm',
+                  const SizedBox(height: 15),
+                  textInput(
+                    controller: heightController,
+                    label: 'Height (cm)',
                     icon: Icons.height,
-                    onChanged: (value) => _height = value,
+                    keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 10),
-                  buildSliderField(
-                    title: 'Weight',
-                    value: _weight,
-                    min: 20,
-                    max: 200,
-                    divisions: 180,
-                    unit: 'kg',
+                  const SizedBox(height: 15),
+                  textInput(
+                    controller: weightController,
+                    label: 'Weight (kg)',
                     icon: Icons.monitor_weight,
-                    onChanged: (value) => _weight = value,
+                    keyboardType: TextInputType.number,
                   ),
                 ],
               ),
             ),
 
-            buildSectionCard(
+            cardBox(
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _selectedGender,
-                    decoration: customInputDecoration('Gender', Icons.wc),
-                    items: _genderOptions.map((gender) {
-                      return DropdownMenuItem<String>(
+                    value: selectedGender,
+                    decoration: const InputDecoration(
+                      labelText: 'Gender',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    items: genderList.map((gender) {
+                      return DropdownMenuItem(
                         value: gender,
                         child: Text(gender),
                       );
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        _selectedGender = value;
+                        selectedGender = value;
                       });
                     },
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 15),
 
                   DropdownButtonFormField<String>(
-                    value: _selectedDisease,
-                    decoration: customInputDecoration(
-                      'Type of Disease',
-                      Icons.medical_services,
+                    value: selectedDisease,
+                    decoration: const InputDecoration(
+                      labelText: 'Type of Disease',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
-                    items: _diseaseOptions.map((disease) {
-                      return DropdownMenuItem<String>(
+                    items: diseaseList.map((disease) {
+                      return DropdownMenuItem(
                         value: disease,
                         child: Text(disease),
                       );
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        _selectedDisease = value;
+                        selectedDisease = value;
 
                         if (value == 'Hemodialysis') {
-                          _selectedStage = null;
+                          selectedStage = null;
                         }
                       });
                     },
                   ),
 
-                  if (_needsStage) ...[
-                    const SizedBox(height: 14),
+                  if (needsStage) ...[
+                    const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
-                      value: _selectedStage,
-                      decoration: customInputDecoration(
-                        'Stage of Disease',
-                        Icons.medical_services,
+                      value: selectedStage,
+                      decoration: const InputDecoration(
+                        labelText: 'Stage of Disease',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
-                      items: _stageOptions.map((stage) {
-                        return DropdownMenuItem<String>(
+                      items: stageList.map((stage) {
+                        return DropdownMenuItem(
                           value: stage,
                           child: Text(stage),
                         );
                       }).toList(),
                       onChanged: (value) {
                         setState(() {
-                          _selectedStage = value;
+                          selectedStage = value;
                         });
                       },
                     ),
@@ -509,30 +429,24 @@ class _CreateprofileScreenState extends State<CreateprofileScreen> {
               ),
             ),
 
-            const SizedBox(height: 8),
-
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(15),
               child: SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[800],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 3,
+                    backgroundColor: Color.fromARGB(255, 35, 63, 45),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           'Save Profile',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
                             color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                 ),
