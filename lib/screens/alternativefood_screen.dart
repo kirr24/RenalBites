@@ -45,6 +45,10 @@ class AlternativeFoodScreen extends StatelessWidget {
         'Unknown Food';
   }
 
+  String getCategory(Map<String, dynamic> food) {
+    return food['category']?.toString() ?? '';
+  }
+
   double getCalories(Map<String, dynamic> food) {
     return toDouble(food['caloriesPer100g'] ?? food['calories']);
   }
@@ -99,44 +103,166 @@ class AlternativeFoodScreen extends StatelessWidget {
     return foods;
   }
 
-  Future<List<Map<String, dynamic>>> getMealModifications() async {
-    final loggedFoodNames = getLoggedFoodNames();
+  List<Map<String, dynamic>> getLoggedFoods() {
+    final foods = currentFood['foods'];
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('meal_modifications')
-        .get();
+    if (foods == null || foods is! List || foods.isEmpty) {
+      return [currentFood];
+    }
 
-    final List<Map<String, dynamic>> matchedModifications = [];
+    return foods.map((e) {
+      return Map<String, dynamic>.from(e as Map);
+    }).toList();
+  }
 
-    for (final doc in snapshot.docs) {
-      final data = Map<String, dynamic>.from(doc.data());
+  List<String> getAutomaticMealAdvice() {
+    final Set<String> advice = {};
 
-      final String foodName =
-          data['foodName']?.toString().toLowerCase().trim() ?? '';
+    final loggedFoods = getLoggedFoods();
 
-      final List keywords = data['keywords'] is List ? data['keywords'] : [];
+    if (potassiumStatus == 'Excessive') {
+      advice.add('Reduce high-potassium foods in this meal.');
+      advice.add(
+        'Choose lower-potassium fruits such as apple, grapes, pineapple, papaya or watermelon.',
+      );
+      advice.add(
+        'Boil vegetables before cooking and discard the boiling water.',
+      );
+      advice.add(
+        'Avoid drinking vegetable soup or broth because potassium may leach into the liquid.',
+      );
+    }
 
-      final bool matchFoodName = loggedFoodNames.contains(foodName);
+    if (phosphorusStatus == 'Excessive') {
+      advice.add(
+        'Reduce foods high in phosphorus such as organ meats, processed meats, legumes and large meat portions.',
+      );
+      advice.add(
+        'Choose fresh foods instead of processed or packaged foods whenever possible.',
+      );
+      advice.add(
+        'Limit processed cheese, cola drinks and foods with phosphate additives.',
+      );
+      advice.add(
+        'Follow your dietitian’s advice regarding phosphate binder usage.',
+      );
+    }
 
-      final bool matchKeyword = keywords.any((keyword) {
-        final key = keyword.toString().toLowerCase().trim();
-        return loggedFoodNames.contains(key);
-      });
+    if (proteinStatus == 'Excessive') {
+      advice.add(
+        'Reduce the portion size of meat, chicken, fish, egg or seafood.',
+      );
+      advice.add('Avoid taking multiple high-protein foods in the same meal.');
+      advice.add(
+        'Replace part of the protein portion with rice or suitable lower-potassium vegetables.',
+      );
+    }
 
-      if (matchFoodName || matchKeyword) {
-        data['docId'] = doc.id;
-        matchedModifications.add(data);
+    if (proteinStatus == 'Deficient') {
+      advice.add(
+        'Include a suitable portion of high-quality protein such as chicken, fish or egg.',
+      );
+      advice.add('Spread protein intake evenly throughout the day.');
+      advice.add('Choose protein sources recommended by your healthcare team.');
+    }
+
+    for (final food in loggedFoods) {
+      final category = getCategory(food);
+
+      if (category == 'Hidangan Ayam') {
+        advice.add(
+          'For chicken dishes, remove visible skin and reduce fried coating.',
+        );
+        advice.add(
+          'Choose grilled, steamed or boiled chicken more often than fried chicken.',
+        );
+        advice.add('Reduce thick gravy or curry sauce.');
+      }
+
+      if (category == 'Hidangan Daging' ||
+          category == 'Hidangan Daging Merah') {
+        advice.add(
+          'For red meat dishes, reduce portion size and choose lean cuts.',
+        );
+        advice.add('Avoid eating large portions of red meat frequently.');
+        advice.add('Limit thick curry, rendang or salty sauces.');
+      }
+
+      if (category == 'Ikan dan Makanan Laut') {
+        advice.add(
+          'Choose fresh fish or seafood instead of salted or processed seafood.',
+        );
+        advice.add('Limit salty items such as ikan asin and budu.');
+        advice.add(
+          'Control seafood portion size to manage protein and phosphorus intake.',
+        );
+      }
+
+      if (category == 'Sayur-sayuran') {
+        advice.add(
+          'Boil vegetables first and throw away the water before cooking.',
+        );
+        advice.add('Avoid using vegetable broth in soups or gravies.');
+        advice.add(
+          'Choose lower-potassium vegetables when potassium intake is high.',
+        );
+      }
+
+      if (category == 'Buah-buahan') {
+        advice.add('Control fruit portion size.');
+        advice.add(
+          'Choose lower-potassium fruits when potassium level is high.',
+        );
+        advice.add('Limit high-potassium fruits such as banana.');
+      }
+
+      if (category == 'Mi dan Pasta') {
+        advice.add('Reduce soup or curry broth intake.');
+        advice.add(
+          'Limit processed toppings such as fish balls, sausages or processed meat.',
+        );
+        advice.add(
+          'Choose smaller noodle portions and balance with suitable vegetables.',
+        );
+      }
+
+      if (category == 'Hidangan Nasi') {
+        advice.add('Control rice portion size according to your meal plan.');
+        advice.add('Reduce salty or oily side dishes served with rice.');
+        advice.add('Choose plain rice more often than oily rice dishes.');
+      }
+
+      if (category == 'Snek dan Makanan Bergoreng') {
+        advice.add(
+          'Limit fried snacks because they are usually high in calories and fat.',
+        );
+        advice.add('Choose steamed, boiled or baked options more often.');
+        advice.add('Take smaller portions of fried foods.');
+      }
+
+      if (category == 'Kekacang dan Legum') {
+        advice.add(
+          'Limit legumes such as dhal, lentils, chickpeas and beans if potassium or phosphorus is high.',
+        );
+        advice.add(
+          'Take smaller portions of legumes and balance with lower-potassium foods.',
+        );
+      }
+
+      if (category == 'Minuman dan Bahan Minuman') {
+        advice.add('Limit instant drink powders and highly processed drinks.');
+        advice.add('Choose plain water based on your fluid allowance.');
       }
     }
 
-    return matchedModifications;
-  }
+    if (advice.isEmpty) {
+      advice.add('Choose fresh home-cooked meals whenever possible.');
+      advice.add('Control portion size and avoid oversized meals.');
+      advice.add('Limit processed, salty and fried foods.');
+      advice.add('Follow your dietitian’s personalized dietary advice.');
+    }
 
-  Future<Map<String, dynamic>> loadData() async {
-    final foods = await getFoodsFromFirestore();
-    final modifications = await getMealModifications();
-
-    return {'foods': foods, 'modifications': modifications};
+    return advice.toList();
   }
 
   int calculateFoodScore(Map<String, dynamic> food) {
@@ -198,6 +324,7 @@ class AlternativeFoodScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loggedFoodNames = getLoggedFoodNames();
+    final automaticAdvice = getAutomaticMealAdvice();
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 218, 245, 226),
@@ -208,8 +335,8 @@ class AlternativeFoodScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: loadData(),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: getFoodsFromFirestore(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -228,11 +355,7 @@ class AlternativeFoodScreen extends StatelessWidget {
             return const Center(child: Text('No data found.'));
           }
 
-          final List<Map<String, dynamic>> foods =
-              List<Map<String, dynamic>>.from(snapshot.data!['foods']);
-
-          final List<Map<String, dynamic>> modifications =
-              List<Map<String, dynamic>>.from(snapshot.data!['modifications']);
+          final foods = snapshot.data!;
 
           final allFoods = foods.where((food) {
             final name = getDisplayName(food).toLowerCase().trim();
@@ -260,7 +383,7 @@ class AlternativeFoodScreen extends StatelessWidget {
               const SizedBox(height: 6),
 
               Text(
-                'These suggestions show how you can modify your current meal instead of fully avoiding it.',
+                'These suggestions are generated based on your current meal condition and food category.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.green.shade900,
@@ -270,16 +393,7 @@ class AlternativeFoodScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              if (modifications.isEmpty)
-                simpleCard(
-                  child: const Text(
-                    'No meal modification advice found for this food.',
-                  ),
-                )
-              else
-                ...modifications.map((modification) {
-                  return mealModificationCard(modification);
-                }),
+              automaticAdviceCard(automaticAdvice),
 
               const SizedBox(height: 22),
 
@@ -330,80 +444,41 @@ class AlternativeFoodScreen extends StatelessWidget {
     );
   }
 
-  Widget mealModificationCard(Map<String, dynamic> data) {
-    final String foodName = data['foodName']?.toString() ?? 'Meal';
-    final String generalAdvice = data['generalAdvice']?.toString() ?? '';
-    final String betterVersion = data['betterVersion']?.toString() ?? '';
-
-    final List modifications = data['modifications'] is List
-        ? data['modifications']
-        : [];
-
+  Widget automaticAdviceCard(List<String> adviceList) {
     return simpleCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            foodName,
-            style: const TextStyle(
+          const Text(
+            'General Advice for This Meal',
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color.fromARGB(255, 35, 63, 45),
             ),
           ),
 
-          if (generalAdvice.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              generalAdvice,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
-            ),
-          ],
+          const SizedBox(height: 10),
 
-          const SizedBox(height: 12),
-
-          ...modifications.map((item) {
-            final map = Map<String, dynamic>.from(item as Map);
-
-            final String ingredient =
-                map['ingredient']?.toString() ?? 'Ingredient';
-            final String action = map['action']?.toString() ?? '';
-            final String reason = map['reason']?.toString() ?? '';
-
+          ...adviceList.map((advice) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(
-                    Icons.tips_and_updates,
-                    size: 20,
+                    Icons.check_circle,
+                    size: 19,
                     color: Color.fromARGB(255, 35, 63, 45),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      '$action $ingredient\nReason: $reason',
-                      style: const TextStyle(fontSize: 13),
-                    ),
+                    child: Text(advice, style: const TextStyle(fontSize: 13)),
                   ),
                 ],
               ),
             );
           }),
-
-          if (betterVersion.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Better version:',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.green.shade900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(betterVersion, style: const TextStyle(fontSize: 13)),
-          ],
         ],
       ),
     );
