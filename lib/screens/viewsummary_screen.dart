@@ -25,19 +25,15 @@ class ViewSummaryScreen extends StatelessWidget {
   }
 
   double normalizeCalories(dynamic value) {
-    final calories = toDouble(value);
-    if (calories > 10000) return calories / 1000;
-    return calories;
+    return toDouble(value);
   }
 
   double normalizeProtein(dynamic value) {
     return toDouble(value);
   }
 
-  double normalizeMineralToMg(dynamic value) {
-    final mineral = toDouble(value);
-    if (mineral > 0 && mineral < 50) return mineral * 1000;
-    return mineral;
+  double normalizeMineral(dynamic value) {
+    return toDouble(value);
   }
 
   double calculateDailyPercentage({
@@ -109,8 +105,8 @@ class ViewSummaryScreen extends StatelessWidget {
 
       totalCalories += normalizeCalories(meal['calories']);
       totalProtein += normalizeProtein(meal['protein']);
-      totalPotassium += normalizeMineralToMg(meal['potassium']);
-      totalPhosphate += normalizeMineralToMg(meal['phosphate']);
+      totalPotassium += normalizeMineral(meal['potassium']);
+      totalPhosphate += normalizeMineral(meal['phosphate']);
     }
 
     return {
@@ -129,8 +125,8 @@ class ViewSummaryScreen extends StatelessWidget {
 
     final double currentCalories = normalizeCalories(data['calories']);
     final double currentProtein = normalizeProtein(data['protein']);
-    final double currentPotassium = normalizeMineralToMg(data['potassium']);
-    final double currentPhosphate = normalizeMineralToMg(data['phosphate']);
+    final double currentPotassium = normalizeMineral(data['potassium']);
+    final double currentPhosphate = normalizeMineral(data['phosphate']);
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 218, 245, 226),
@@ -234,13 +230,6 @@ class ViewSummaryScreen extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.green.shade100),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: Row(
                     children: [
@@ -579,13 +568,6 @@ class ViewSummaryScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,13 +629,6 @@ class ViewSummaryScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
