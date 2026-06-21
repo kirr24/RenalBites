@@ -14,9 +14,14 @@ class FoodLogScreen extends StatefulWidget {
 
 class _FoodLogScreenState extends State<FoodLogScreen> {
   DateTime selectedDate = DateTime.now();
-  String selectedMealType = "Breakfast";
+  String selectedMealType = "Sarapan";
 
-  final List<String> mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"];
+  final List<String> mealTypes = [
+    "Sarapan",
+    "Makan Tengah Hari",
+    "Makan Malam",
+    "Snek",
+  ];
 
   double toDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -25,30 +30,27 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
+  bool hasNoLimit(dynamic limit) {
+    if (limit == null) return true;
+
+    final text = limit.toString().toLowerCase();
+
+    return text.contains('tiada sekatan') ||
+        text.contains('no restriction') ||
+        text.contains('n/a') ||
+        text.contains('tidak berkenaan');
+  }
+
   double normalizeCalories(dynamic value) {
-    final calories = toDouble(value);
-
-    // If old data was saved as cal instead of kcal
-    if (calories > 10000) {
-      return calories / 1000;
-    }
-
-    return calories;
+    return toDouble(value);
   }
 
   double normalizeProtein(dynamic value) {
-    return toDouble(value); // g
+    return toDouble(value);
   }
 
   double normalizeMineralToMg(dynamic value) {
-    final mineral = toDouble(value);
-
-    // If old data was saved as g, convert to mg
-    if (mineral > 0 && mineral < 50) {
-      return mineral * 1000;
-    }
-
-    return mineral; // mg
+    return toDouble(value);
   }
 
   String getDateId(DateTime date) {
@@ -56,7 +58,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   String formatDisplayDate(DateTime date) {
-    return DateFormat('MMMM d, yyyy').format(date);
+    return DateFormat('d MMMM y').format(date);
   }
 
   String formatValue(double value, String unit) {
@@ -83,14 +85,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   String getStatus(double percentage) {
-    if (percentage < 70) return "Within Limit";
-    if (percentage <= 100) return "Near Limit";
-    return "Exceeded";
+    if (percentage < 70) return "Dalam Had";
+    if (percentage <= 100) return "Hampir Had";
+    return "Melebihi Had";
   }
 
   Color getStatusColor(String status) {
-    if (status == "Within Limit") return Colors.green;
-    if (status == "Near Limit") return Colors.orange;
+    if (status == "Dalam Had") return Colors.green;
+    if (status == "Hampir Had") return Colors.orange;
     return Colors.red;
   }
 
@@ -316,7 +318,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Used today: ${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit",
+            "Pengambilan hari ini: ${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit",
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade700,
@@ -326,8 +328,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           const SizedBox(height: 4),
           Text(
             balance >= 0
-                ? "Balance left today: ${formatValue(balance, unit)} $unit"
-                : "Exceeded by: ${formatValue(balance.abs(), unit)} $unit",
+                ? "Baki hari ini: ${formatValue(balance, unit)} $unit"
+                : "Melebihi had sebanyak: ${formatValue(balance.abs(), unit)} $unit",
             style: TextStyle(
               color: balance >= 0 ? Colors.green.shade700 : Colors.red.shade700,
               fontSize: 13,
@@ -358,16 +360,75 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     );
   }
 
+  Widget noLimitTile({
+    required String nutrient,
+    required double intake,
+    required String unit,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            nutrient,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color.fromARGB(255, 35, 63, 45),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Pengambilan hari ini: ${formatValue(intake, unit)} $unit",
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              "Tiada sekatan khusus",
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget foodList(Map<String, dynamic> mealData) {
     final foods = mealData['foods'];
 
     if (foods == null || foods is! List || foods.isEmpty) {
-      return const Text("No food details available.");
+      return const Text("Tiada butiran makanan tersedia.");
     }
 
     return Column(
       children: foods.map<Widget>((food) {
         final foodMap = Map<String, dynamic>.from(food);
+
+        final double servingSize = toDouble(foodMap['servingSize']);
+        final String servingText = servingSize > 0
+            ? "${servingSize.toStringAsFixed(0)} g"
+            : foodMap['serving']?.toString() ?? "";
 
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
@@ -386,7 +447,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "${foodMap['mealName']} • ${formatValue(toDouble(foodMap['quantity']), 'g')} g",
+                  "${foodMap['mealName']} • $servingText",
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -407,7 +468,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         onPressed: goToFoodLogging,
         icon: const Icon(Icons.add_circle_outline),
         label: const Text(
-          "Log Food Intake",
+          "Tambah Pengambilan Makanan",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
@@ -425,13 +486,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final safeSelectedMealType = mealTypes.contains(selectedMealType)
+        ? selectedMealType
+        : null;
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 218, 245, 226),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 0,
         title: const Text(
-          "Food Log Calendar",
+          "Kalendar Log Makanan",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -485,7 +550,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 border: Border.all(color: Colors.green.shade100),
               ),
               child: DropdownButton<String>(
-                value: selectedMealType,
+                value: safeSelectedMealType,
+                hint: const Text("Pilih jenis hidangan"),
                 isExpanded: true,
                 underline: const SizedBox(),
                 items: mealTypes.map((meal) {
@@ -518,7 +584,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text("Unable to load food log."));
+                  return const Center(
+                    child: Text("Log makanan tidak dapat dimuatkan."),
+                  );
                 }
 
                 final userData = snapshot.data![0] as Map<String, dynamic>?;
@@ -528,11 +596,18 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 if (userData == null) {
                   return const Center(
                     child: Text(
-                      "No user limit found.\nPlease open Renal Profile first.",
+                      "Had nutrien pengguna tidak dijumpai.\nSila buka Profil Renal terlebih dahulu.",
                       textAlign: TextAlign.center,
                     ),
                   );
                 }
+
+                final bool potassiumNoLimit = hasNoLimit(
+                  userData['potassiumLimit'],
+                );
+                final bool phosphateNoLimit = hasNoLimit(
+                  userData['phosphateLimit'],
+                );
 
                 final double caloriesLimit = getMaxLimit(
                   userData['caloriesLimit']?.toString() ?? "0",
@@ -542,13 +617,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   userData['proteinLimit']?.toString() ?? "0",
                 );
 
-                final double potassiumLimit = getMaxLimit(
-                  userData['potassiumLimit']?.toString() ?? "0",
-                );
+                final double potassiumLimit = potassiumNoLimit
+                    ? 0
+                    : getMaxLimit(
+                        userData['potassiumLimit']?.toString() ?? "0",
+                      );
 
-                final double phosphateLimit = getMaxLimit(
-                  userData['phosphateLimit']?.toString() ?? "0",
-                );
+                final double phosphateLimit = phosphateNoLimit
+                    ? 0
+                    : getMaxLimit(
+                        userData['phosphateLimit']?.toString() ?? "0",
+                      );
 
                 final double totalCaloriesToday = todayTotal['calories'] ?? 0;
                 final double totalProteinToday = todayTotal['protein'] ?? 0;
@@ -573,15 +652,19 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   dailyLimit: proteinLimit,
                 );
 
-                final double potassiumPercent = calculateDailyPercentage(
-                  intake: totalPotassiumToday,
-                  dailyLimit: potassiumLimit,
-                );
+                final double potassiumPercent = potassiumNoLimit
+                    ? 0
+                    : calculateDailyPercentage(
+                        intake: totalPotassiumToday,
+                        dailyLimit: potassiumLimit,
+                      );
 
-                final double phosphatePercent = calculateDailyPercentage(
-                  intake: totalPhosphateToday,
-                  dailyLimit: phosphateLimit,
-                );
+                final double phosphatePercent = phosphateNoLimit
+                    ? 0
+                    : calculateDailyPercentage(
+                        intake: totalPhosphateToday,
+                        dailyLimit: phosphateLimit,
+                      );
 
                 final String caloriesStatus = getStatus(caloriesPercent);
                 final String proteinStatus = getStatus(proteinPercent);
@@ -608,7 +691,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              "No $selectedMealType log found for ${formatDisplayDate(selectedDate)}.",
+                              "Tiada log $selectedMealType dijumpai untuk ${formatDisplayDate(selectedDate)}.",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 15,
@@ -641,7 +724,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "$selectedMealType Intake",
+                      "Pengambilan $selectedMealType",
                       style: const TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.bold,
@@ -659,7 +742,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Calories",
+                            "Kalori",
                             formatValue(mealCalories, "kcal"),
                             "kcal",
                             Icons.local_fire_department,
@@ -685,7 +768,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Potassium",
+                            "Kalium",
                             formatValue(mealPotassium, "mg"),
                             "mg",
                             Icons.bolt,
@@ -695,7 +778,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: nutrientCard(
-                            "Phosphorus",
+                            "Fosfat",
                             formatValue(mealPhosphate, "mg"),
                             "mg",
                             Icons.science,
@@ -708,7 +791,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                     const SizedBox(height: 22),
 
                     const Text(
-                      "Total Intake For Selected Date",
+                      "Jumlah Pengambilan untuk Tarikh Dipilih",
                       style: TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.bold,
@@ -722,7 +805,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Calories",
+                            "Kalori",
                             formatValue(totalCaloriesToday, "kcal"),
                             "kcal",
                             Icons.local_fire_department,
@@ -748,7 +831,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Potassium",
+                            "Kalium",
                             formatValue(totalPotassiumToday, "mg"),
                             "mg",
                             Icons.bolt,
@@ -758,7 +841,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: nutrientCard(
-                            "Phosphorus",
+                            "Fosfat",
                             formatValue(totalPhosphateToday, "mg"),
                             "mg",
                             Icons.science,
@@ -771,7 +854,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                     const SizedBox(height: 22),
 
                     const Text(
-                      "Daily Limit Tracker",
+                      "Penjejak Had Harian",
                       style: TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.bold,
@@ -782,7 +865,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                     const SizedBox(height: 10),
 
                     progressTile(
-                      nutrient: "Calories",
+                      nutrient: "Kalori",
                       intake: totalCaloriesToday,
                       limit: caloriesLimit,
                       balance: caloriesBalance,
@@ -801,25 +884,37 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       unit: "g",
                     ),
 
-                    progressTile(
-                      nutrient: "Potassium",
-                      intake: totalPotassiumToday,
-                      limit: potassiumLimit,
-                      balance: potassiumBalance,
-                      percentage: potassiumPercent,
-                      status: potassiumStatus,
-                      unit: "mg",
-                    ),
+                    potassiumNoLimit
+                        ? noLimitTile(
+                            nutrient: "Kalium",
+                            intake: totalPotassiumToday,
+                            unit: "mg",
+                          )
+                        : progressTile(
+                            nutrient: "Kalium",
+                            intake: totalPotassiumToday,
+                            limit: potassiumLimit,
+                            balance: potassiumBalance,
+                            percentage: potassiumPercent,
+                            status: potassiumStatus,
+                            unit: "mg",
+                          ),
 
-                    progressTile(
-                      nutrient: "Phosphorus",
-                      intake: totalPhosphateToday,
-                      limit: phosphateLimit,
-                      balance: phosphateBalance,
-                      percentage: phosphatePercent,
-                      status: phosphateStatus,
-                      unit: "mg",
-                    ),
+                    phosphateNoLimit
+                        ? noLimitTile(
+                            nutrient: "Fosfat",
+                            intake: totalPhosphateToday,
+                            unit: "mg",
+                          )
+                        : progressTile(
+                            nutrient: "Fosfat",
+                            intake: totalPhosphateToday,
+                            limit: phosphateLimit,
+                            balance: phosphateBalance,
+                            percentage: phosphatePercent,
+                            status: phosphateStatus,
+                            unit: "mg",
+                          ),
 
                     const SizedBox(height: 20),
 

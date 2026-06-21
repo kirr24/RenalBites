@@ -13,7 +13,7 @@ class ReportScreen extends StatefulWidget {
 }
 
 class _ReportScreenState extends State<ReportScreen> {
-  String selectedTab = "Daily";
+  String selectedTab = "Harian";
   DateTime selectedDate = DateTime.now();
 
   double toDouble(dynamic value) {
@@ -23,10 +23,19 @@ class _ReportScreenState extends State<ReportScreen> {
     return double.tryParse(value.toString()) ?? 0.0;
   }
 
+  bool hasNoLimit(dynamic limit) {
+    if (limit == null) return true;
+
+    final text = limit.toString().toLowerCase();
+
+    return text.contains('tiada sekatan') ||
+        text.contains('no restriction') ||
+        text.contains('n/a') ||
+        text.contains('tidak berkenaan');
+  }
+
   double normalizeCalories(dynamic value) {
-    final calories = toDouble(value);
-    if (calories > 10000) return calories / 1000;
-    return calories;
+    return toDouble(value);
   }
 
   double normalizeProtein(dynamic value) {
@@ -34,9 +43,7 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   double normalizeMineralToMg(dynamic value) {
-    final mineral = toDouble(value);
-    if (mineral > 0 && mineral < 50) return mineral * 1000;
-    return mineral;
+    return toDouble(value);
   }
 
   double getMaxLimit(String limit) {
@@ -74,9 +81,9 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   List<DateTime> getSelectedDates() {
-    if (selectedTab == "Daily") return [selectedDate];
+    if (selectedTab == "Harian") return [selectedDate];
 
-    if (selectedTab == "Weekly") {
+    if (selectedTab == "Mingguan") {
       final monday = selectedDate.subtract(
         Duration(days: selectedDate.weekday - 1),
       );
@@ -152,11 +159,11 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   String getReportDateText() {
-    if (selectedTab == "Daily") {
+    if (selectedTab == "Harian") {
       return DateFormat('d MMMM yyyy').format(selectedDate);
     }
 
-    if (selectedTab == "Weekly") {
+    if (selectedTab == "Mingguan") {
       final monday = selectedDate.subtract(
         Duration(days: selectedDate.weekday - 1),
       );
@@ -168,8 +175,8 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   double getPeriodMultiplier() {
-    if (selectedTab == "Daily") return 1;
-    if (selectedTab == "Weekly") return 7;
+    if (selectedTab == "Harian") return 1;
+    if (selectedTab == "Mingguan") return 7;
 
     return DateTime(
       selectedDate.year,
@@ -184,14 +191,14 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   String getStatus(double percentage) {
-    if (percentage < 70) return "Within Limit";
-    if (percentage <= 100) return "Near Limit";
-    return "Exceeded";
+    if (percentage < 70) return "Dalam Had";
+    if (percentage <= 100) return "Hampir Had";
+    return "Melebihi Had";
   }
 
   Color getStatusColor(String status) {
-    if (status == "Within Limit") return Colors.green;
-    if (status == "Near Limit") return Colors.orange;
+    if (status == "Dalam Had") return Colors.green;
+    if (status == "Hampir Had") return Colors.orange;
     return Colors.red;
   }
 
@@ -299,21 +306,51 @@ class _ReportScreenState extends State<ReportScreen> {
     required double potassiumLimit,
     required double phosphate,
     required double phosphateLimit,
+    required bool potassiumNoLimit,
+    required bool phosphateNoLimit,
   }) {
-    final caloriesPercent = getPercentage(calories, caloriesLimit);
-    final proteinPercent = getPercentage(protein, proteinLimit);
-    final potassiumPercent = getPercentage(potassium, potassiumLimit);
-    final phosphatePercent = getPercentage(phosphate, phosphateLimit);
+    final List<Map<String, dynamic>> chartItems = [
+      {
+        "name": "Kalori",
+        "intake": calories,
+        "limit": caloriesLimit,
+        "unit": "kcal",
+        "percent": getPercentage(calories, caloriesLimit),
+      },
+      {
+        "name": "Protein",
+        "intake": protein,
+        "limit": proteinLimit,
+        "unit": "g",
+        "percent": getPercentage(protein, proteinLimit),
+      },
+    ];
 
-    final maxY =
-        [
-          caloriesPercent,
-          proteinPercent,
-          potassiumPercent,
-          phosphatePercent,
-          100.0,
-        ].reduce((a, b) => a > b ? a : b) +
-        20;
+    if (!potassiumNoLimit) {
+      chartItems.add({
+        "name": "Kalium",
+        "intake": potassium,
+        "limit": potassiumLimit,
+        "unit": "mg",
+        "percent": getPercentage(potassium, potassiumLimit),
+      });
+    }
+
+    if (!phosphateNoLimit) {
+      chartItems.add({
+        "name": "Fosfat",
+        "intake": phosphate,
+        "limit": phosphateLimit,
+        "unit": "mg",
+        "percent": getPercentage(phosphate, phosphateLimit),
+      });
+    }
+
+    final maxPercent = chartItems
+        .map((item) => item["percent"] as double)
+        .reduce((a, b) => a > b ? a : b);
+
+    final maxY = (maxPercent > 100 ? maxPercent : 100.0) + 20.0;
 
     Color barColor(double percent) {
       final status = getStatus(percent);
@@ -338,7 +375,7 @@ class _ReportScreenState extends State<ReportScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Nutrient Limit Bar Chart",
+            "Carta Bar Had Nutrien",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -347,13 +384,24 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            "100% means you have reached your recommended limit.",
+            "100% bermaksud anda telah mencapai had nutrien yang disyorkan.",
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w500,
             ),
           ),
+          if (potassiumNoLimit || phosphateNoLimit) ...[
+            const SizedBox(height: 6),
+            Text(
+              "Nutrien tanpa had khusus tidak dipaparkan dalam carta.",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
           const SizedBox(height: 22),
 
           SizedBox(
@@ -367,26 +415,14 @@ class _ReportScreenState extends State<ReportScreen> {
                   enabled: true,
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      String name = "";
-                      String detail = "";
+                      final item = chartItems[group.x];
+                      final name = item["name"].toString();
+                      final intake = item["intake"] as double;
+                      final limit = item["limit"] as double;
+                      final unit = item["unit"].toString();
 
-                      if (group.x == 0) {
-                        name = "Calories";
-                        detail =
-                            "${formatValue(calories, "kcal")} kcal / ${formatValue(caloriesLimit, "kcal")} kcal";
-                      } else if (group.x == 1) {
-                        name = "Protein";
-                        detail =
-                            "${formatValue(protein, "g")} g / ${formatValue(proteinLimit, "g")} g";
-                      } else if (group.x == 2) {
-                        name = "Potassium";
-                        detail =
-                            "${formatValue(potassium, "mg")} mg / ${formatValue(potassiumLimit, "mg")} mg";
-                      } else {
-                        name = "Phosphorus";
-                        detail =
-                            "${formatValue(phosphate, "mg")} mg / ${formatValue(phosphateLimit, "mg")} mg";
-                      }
+                      final detail =
+                          "${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit";
 
                       return BarTooltipItem(
                         "$name\n${rod.toY.toStringAsFixed(0)}%\n$detail",
@@ -436,12 +472,13 @@ class _ReportScreenState extends State<ReportScreen> {
                       showTitles: true,
                       reservedSize: 42,
                       getTitlesWidget: (value, meta) {
-                        String text = "";
+                        final index = value.toInt();
 
-                        if (value.toInt() == 0) text = "Calories";
-                        if (value.toInt() == 1) text = "Protein";
-                        if (value.toInt() == 2) text = "Potassium";
-                        if (value.toInt() == 3) text = "Phosphorus";
+                        if (index < 0 || index >= chartItems.length) {
+                          return const SizedBox();
+                        }
+
+                        final text = chartItems[index]["name"].toString();
 
                         return Padding(
                           padding: const EdgeInsets.only(top: 10),
@@ -458,61 +495,30 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   ),
                 ),
-                barGroups: [
-                  BarChartGroupData(
-                    x: 0,
+                barGroups: List.generate(chartItems.length, (index) {
+                  final percent = chartItems[index]["percent"] as double;
+
+                  return BarChartGroupData(
+                    x: index,
                     barRods: [
                       BarChartRodData(
-                        toY: caloriesPercent,
+                        toY: percent,
                         width: 28,
                         borderRadius: BorderRadius.circular(8),
-                        color: barColor(caloriesPercent),
+                        color: barColor(percent),
                       ),
                     ],
-                  ),
-                  BarChartGroupData(
-                    x: 1,
-                    barRods: [
-                      BarChartRodData(
-                        toY: proteinPercent,
-                        width: 28,
-                        borderRadius: BorderRadius.circular(8),
-                        color: barColor(proteinPercent),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 2,
-                    barRods: [
-                      BarChartRodData(
-                        toY: potassiumPercent,
-                        width: 28,
-                        borderRadius: BorderRadius.circular(8),
-                        color: barColor(potassiumPercent),
-                      ),
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 3,
-                    barRods: [
-                      BarChartRodData(
-                        toY: phosphatePercent,
-                        width: 28,
-                        borderRadius: BorderRadius.circular(8),
-                        color: barColor(phosphatePercent),
-                      ),
-                    ],
-                  ),
-                ],
+                  );
+                }),
               ),
             ),
           ),
 
           const SizedBox(height: 14),
 
-          chartLegend("Within Limit", Colors.green),
-          chartLegend("Near Limit", Colors.orange),
-          chartLegend("Exceeded", Colors.red),
+          chartLegend("Dalam Had", Colors.green),
+          chartLegend("Hampir Had", Colors.orange),
+          chartLegend("Melebihi Had", Colors.red),
         ],
       ),
     );
@@ -590,7 +596,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Used: ${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit",
+                  "Pengambilan: ${formatValue(intake, unit)} $unit / ${formatValue(limit, unit)} $unit",
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade700,
@@ -600,8 +606,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 const SizedBox(height: 2),
                 Text(
                   balance >= 0
-                      ? "Balance left: ${formatValue(balance, unit)} $unit"
-                      : "Exceeded by: ${formatValue(balance.abs(), unit)} $unit",
+                      ? "Baki: ${formatValue(balance, unit)} $unit"
+                      : "Melebihi had sebanyak: ${formatValue(balance.abs(), unit)} $unit",
                   style: TextStyle(
                     fontSize: 12,
                     color: balance >= 0
@@ -627,6 +633,71 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  Widget noLimitDetailTile({
+    required String nutrient,
+    required double intake,
+    required String unit,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 45,
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nutrient,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 35, 63, 45),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Pengambilan: ${formatValue(intake, unit)} $unit",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Tiada sekatan khusus",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Icon(Icons.check_circle, color: Colors.green, size: 24),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -635,7 +706,7 @@ class _ReportScreenState extends State<ReportScreen> {
         automaticallyImplyLeading: false,
         centerTitle: true,
         title: const Text(
-          "Report",
+          "Laporan",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -644,7 +715,7 @@ class _ReportScreenState extends State<ReportScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              "Nutrition Report",
+              "Laporan Pemakanan",
               style: TextStyle(
                 fontSize: 26,
                 color: Color.fromARGB(255, 35, 63, 45),
@@ -653,7 +724,7 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
             const SizedBox(height: 2),
             const Text(
-              "Track your total nutrient intake",
+              "Pantau jumlah pengambilan nutrien anda",
               style: TextStyle(fontSize: 13, color: Colors.black87),
             ),
             const SizedBox(height: 14),
@@ -667,9 +738,9 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               child: Row(
                 children: [
-                  tabButton("Daily"),
-                  tabButton("Weekly"),
-                  tabButton("Monthly"),
+                  tabButton("Harian"),
+                  tabButton("Mingguan"),
+                  tabButton("Bulanan"),
                 ],
               ),
             ),
@@ -733,7 +804,9 @@ class _ReportScreenState extends State<ReportScreen> {
                 }
 
                 if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text("Unable to load report."));
+                  return const Center(
+                    child: Text("Laporan tidak dapat dimuatkan."),
+                  );
                 }
 
                 final userData = snapshot.data![0] as Map<String, dynamic>?;
@@ -742,13 +815,20 @@ class _ReportScreenState extends State<ReportScreen> {
                 if (userData == null) {
                   return const Center(
                     child: Text(
-                      "No user limit found.\nPlease open Renal Profile first.",
+                      "Had nutrien pengguna tidak dijumpai.\nSila buka Profil Renal terlebih dahulu.",
                       textAlign: TextAlign.center,
                     ),
                   );
                 }
 
                 final multiplier = getPeriodMultiplier();
+
+                final bool potassiumNoLimit = hasNoLimit(
+                  userData['potassiumLimit'],
+                );
+                final bool phosphateNoLimit = hasNoLimit(
+                  userData['phosphateLimit'],
+                );
 
                 final caloriesLimit =
                     getMaxLimit(userData['caloriesLimit']?.toString() ?? "0") *
@@ -758,13 +838,19 @@ class _ReportScreenState extends State<ReportScreen> {
                     getMaxLimit(userData['proteinLimit']?.toString() ?? "0") *
                     multiplier;
 
-                final potassiumLimit =
-                    getMaxLimit(userData['potassiumLimit']?.toString() ?? "0") *
-                    multiplier;
+                final potassiumLimit = potassiumNoLimit
+                    ? 0.0
+                    : getMaxLimit(
+                            userData['potassiumLimit']?.toString() ?? "0",
+                          ) *
+                          multiplier;
 
-                final phosphateLimit =
-                    getMaxLimit(userData['phosphateLimit']?.toString() ?? "0") *
-                    multiplier;
+                final phosphateLimit = phosphateNoLimit
+                    ? 0.0
+                    : getMaxLimit(
+                            userData['phosphateLimit']?.toString() ?? "0",
+                          ) *
+                          multiplier;
 
                 final calories = totalData['calories'] ?? 0;
                 final protein = totalData['protein'] ?? 0;
@@ -775,7 +861,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Total Intake",
+                      "Jumlah Pengambilan",
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -788,7 +874,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Calories",
+                            "Kalori",
                             formatValue(calories, "kcal"),
                             "kcal",
                             Icons.local_fire_department,
@@ -814,7 +900,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       children: [
                         Expanded(
                           child: nutrientCard(
-                            "Potassium",
+                            "Kalium",
                             formatValue(potassium, "mg"),
                             "mg",
                             Icons.bolt,
@@ -824,7 +910,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: nutrientCard(
-                            "Phosphorus",
+                            "Fosfat",
                             formatValue(phosphate, "mg"),
                             "mg",
                             Icons.science,
@@ -845,12 +931,14 @@ class _ReportScreenState extends State<ReportScreen> {
                       potassiumLimit: potassiumLimit,
                       phosphate: phosphate,
                       phosphateLimit: phosphateLimit,
+                      potassiumNoLimit: potassiumNoLimit,
+                      phosphateNoLimit: phosphateNoLimit,
                     ),
 
                     const SizedBox(height: 18),
 
                     const Text(
-                      "Nutrient Details",
+                      "Butiran Nutrien",
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -861,7 +949,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     const SizedBox(height: 8),
 
                     nutrientDetailTile(
-                      nutrient: "Calories",
+                      nutrient: "Kalori",
                       intake: calories,
                       limit: caloriesLimit,
                       unit: "kcal",
@@ -872,18 +960,32 @@ class _ReportScreenState extends State<ReportScreen> {
                       limit: proteinLimit,
                       unit: "g",
                     ),
-                    nutrientDetailTile(
-                      nutrient: "Potassium",
-                      intake: potassium,
-                      limit: potassiumLimit,
-                      unit: "mg",
-                    ),
-                    nutrientDetailTile(
-                      nutrient: "Phosphorus",
-                      intake: phosphate,
-                      limit: phosphateLimit,
-                      unit: "mg",
-                    ),
+
+                    potassiumNoLimit
+                        ? noLimitDetailTile(
+                            nutrient: "Kalium",
+                            intake: potassium,
+                            unit: "mg",
+                          )
+                        : nutrientDetailTile(
+                            nutrient: "Kalium",
+                            intake: potassium,
+                            limit: potassiumLimit,
+                            unit: "mg",
+                          ),
+
+                    phosphateNoLimit
+                        ? noLimitDetailTile(
+                            nutrient: "Fosfat",
+                            intake: phosphate,
+                            unit: "mg",
+                          )
+                        : nutrientDetailTile(
+                            nutrient: "Fosfat",
+                            intake: phosphate,
+                            limit: phosphateLimit,
+                            unit: "mg",
+                          ),
                   ],
                 );
               },

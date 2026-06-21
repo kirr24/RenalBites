@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class AddRecipeScreen extends StatefulWidget {
   const AddRecipeScreen({super.key});
@@ -15,8 +18,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
   final proteinController = TextEditingController();
   final phosphateController = TextEditingController();
   final potassiumController = TextEditingController();
-  final cholesterolController = TextEditingController();
-  final photoUrlController = TextEditingController();
+
+  Uint8List? recipeImage;
+  final ImagePicker picker = ImagePicker();
 
   final List<TextEditingController> ingredientControllers = [
     TextEditingController(),
@@ -35,8 +39,6 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     proteinController.dispose();
     phosphateController.dispose();
     potassiumController.dispose();
-    cholesterolController.dispose();
-    photoUrlController.dispose();
 
     for (final controller in ingredientControllers) {
       controller.dispose();
@@ -51,6 +53,36 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
   double toDouble(String value) {
     return double.tryParse(value.trim()) ?? 0.0;
+  }
+
+  Future<String> uploadRecipeImage() async {
+    if (recipeImage == null) return "";
+
+    final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child("recipe_images")
+        .child("$fileName.jpg");
+
+    await ref.putData(recipeImage!);
+
+    return await ref.getDownloadURL();
+  }
+
+  Future<void> pickRecipeImage(ImageSource source) async {
+    final XFile? pickedFile = await picker.pickImage(
+      source: source,
+      imageQuality: 80,
+    );
+
+    if (pickedFile == null) return;
+
+    final bytes = await pickedFile.readAsBytes();
+
+    setState(() {
+      recipeImage = bytes;
+    });
   }
 
   Future<void> saveRecipe() async {
@@ -69,7 +101,9 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
     if (recipeName.isEmpty || ingredients.isEmpty || directions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please fill recipe name, ingredients and directions"),
+          content: Text(
+            "Sila isi nama resipi, bahan-bahan dan cara penyediaan",
+          ),
         ),
       );
       return;
@@ -91,8 +125,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         "protein": toDouble(proteinController.text),
         "phosphate": toDouble(phosphateController.text),
         "potassium": toDouble(potassiumController.text),
-        "cholesterol": toDouble(cholesterolController.text),
-        "photoUrl": photoUrlController.text.trim(),
+        "photoUrl": await uploadRecipeImage(),
         "createdAt": FieldValue.serverTimestamp(),
         "updatedAt": FieldValue.serverTimestamp(),
       };
@@ -101,15 +134,15 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Recipe saved successfully")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Resipi berjaya disimpan")));
 
       Navigator.pop(context, recipeData);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Ralat: $e")));
     }
 
     if (mounted) {
@@ -273,7 +306,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          "Add Recipe",
+          "Tambah Resipi",
           style: TextStyle(
             color: Color.fromARGB(255, 251, 251, 251),
             fontWeight: FontWeight.bold,
@@ -286,25 +319,28 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            labelText("Recipe Name"),
-            inputField(controller: recipeNameController, hint: "Recipe name"),
+            labelText("Nama Resipi"),
+            inputField(
+              controller: recipeNameController,
+              hint: "Masukkan nama resipi",
+            ),
 
             const SizedBox(height: 16),
 
             numberedInputList(
-              title: "Ingredients",
+              title: "Bahan-bahan",
               controllers: ingredientControllers,
-              hint: "Add ingredient",
-              buttonText: "Add Ingredient",
+              hint: "Tambah bahan",
+              buttonText: "Tambah Bahan",
             ),
 
             const SizedBox(height: 8),
 
             numberedInputList(
-              title: "Directions",
+              title: "Cara Penyediaan",
               controllers: directionControllers,
-              hint: "Add step",
-              buttonText: "Add Step",
+              hint: "Tambah langkah",
+              buttonText: "Tambah Langkah",
               maxLines: 2,
             ),
 
@@ -312,7 +348,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
             Row(
               children: [
-                nutrientInput("Calories (kcal)", caloriesController),
+                nutrientInput("Kalori (kcal)", caloriesController),
                 const SizedBox(width: 12),
                 nutrientInput("Protein (g)", proteinController),
               ],
@@ -322,29 +358,58 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
 
             Row(
               children: [
-                nutrientInput("Phosphate (mg)", phosphateController),
+                nutrientInput("Fosfat (mg)", phosphateController),
                 const SizedBox(width: 12),
-                nutrientInput("Potassium (mg)", potassiumController),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                nutrientInput("Cholesterol (mg)", cholesterolController),
-                const SizedBox(width: 12),
-                const Expanded(child: SizedBox()),
+                nutrientInput("Kalium (mg)", potassiumController),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            labelText("Photo URL"),
-            inputField(
-              controller: photoUrlController,
-              hint: "Insert picture URL of food here",
-              maxLines: 2,
+            labelText("Gambar Resipi"),
+
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.green.shade100),
+              ),
+              child: recipeImage != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(recipeImage!, fit: BoxFit.cover),
+                    )
+                  : const Center(child: Text("Tiada gambar dipilih")),
+            ),
+
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      pickRecipeImage(ImageSource.camera);
+                    },
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text("Kamera"),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      pickRecipeImage(ImageSource.gallery);
+                    },
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text("Galeri"),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 24),
@@ -363,7 +428,7 @@ class _AddRecipeScreenState extends State<AddRecipeScreen> {
                 child: isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        "Save Recipe",
+                        "Simpan Resipi",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,

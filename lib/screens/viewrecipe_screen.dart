@@ -19,7 +19,7 @@ class ViewRecipeScreen extends StatelessWidget {
     final List directions = recipe['directions'] as List? ?? [];
     final String photoUrl = recipe['photoUrl']?.toString() ?? "";
     final String recipeName =
-        recipe['recipeName']?.toString() ?? "Recipe Details";
+        recipe['recipeName']?.toString() ?? "Butiran Resipi";
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 218, 245, 226),
@@ -73,10 +73,10 @@ class ViewRecipeScreen extends StatelessWidget {
           const SizedBox(height: 18),
 
           sectionBox(
-            title: "Ingredients",
+            title: "Bahan-bahan",
             icon: Icons.shopping_basket_outlined,
             children: ingredients.isEmpty
-                ? [simpleText("No ingredients added.")]
+                ? [simpleText("Tiada bahan ditambah.")]
                 : List.generate(
                     ingredients.length,
                     (index) =>
@@ -87,21 +87,22 @@ class ViewRecipeScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           sectionBox(
-            title: "Directions",
+            title: "Cara Penyediaan",
             icon: Icons.menu_book_outlined,
             children: directions.isEmpty
-                ? [simpleText("No directions added.")]
+                ? [simpleText("Tiada cara penyediaan ditambah.")]
                 : List.generate(
                     directions.length,
-                    (index) =>
-                        simpleText("Step ${index + 1}: ${directions[index]}"),
+                    (index) => simpleText(
+                      "Langkah ${index + 1}: ${directions[index]}",
+                    ),
                   ),
           ),
 
           const SizedBox(height: 16),
 
           const Text(
-            "Nutritional Information",
+            "Maklumat Nutrisi",
             style: TextStyle(
               fontSize: 21,
               fontWeight: FontWeight.bold,
@@ -114,7 +115,7 @@ class ViewRecipeScreen extends StatelessWidget {
           Row(
             children: [
               nutritionCard(
-                "Calories",
+                "Kalori",
                 formatNumber(recipe['calories']),
                 "kcal",
                 Icons.local_fire_department,
@@ -134,33 +135,18 @@ class ViewRecipeScreen extends StatelessWidget {
           Row(
             children: [
               nutritionCard(
-                "Phosphate",
+                "Fosfat",
                 formatNumber(recipe['phosphate']),
                 "mg",
                 Icons.science_outlined,
               ),
               const SizedBox(width: 10),
               nutritionCard(
-                "Potassium",
+                "Kalium",
                 formatNumber(recipe['potassium']),
                 "mg",
                 Icons.bolt,
               ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          Row(
-            children: [
-              nutritionCard(
-                "Cholesterol",
-                formatNumber(recipe['cholesterol']),
-                "mg",
-                Icons.favorite_border,
-              ),
-              const SizedBox(width: 10),
-              const Expanded(child: SizedBox()),
             ],
           ),
 

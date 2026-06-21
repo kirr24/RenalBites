@@ -42,7 +42,7 @@ class AlternativeFoodScreen extends StatelessWidget {
         food['malayname']?.toString() ??
         food['mealName']?.toString() ??
         food['name']?.toString() ??
-        'Unknown Food';
+        'Makanan Tidak Diketahui';
   }
 
   String getCategory(Map<String, dynamic> food) {
@@ -50,24 +50,33 @@ class AlternativeFoodScreen extends StatelessWidget {
   }
 
   double getCalories(Map<String, dynamic> food) {
-    return toDouble(food['caloriesPer100g'] ?? food['calories']);
+    return toDouble(food['calories']);
   }
 
   double getProtein(Map<String, dynamic> food) {
-    return toDouble(food['proteinPer100g'] ?? food['protein']);
+    return toDouble(food['protein']);
   }
 
   double getPotassium(Map<String, dynamic> food) {
-    return toDouble(food['potassiumPer100g'] ?? food['potassium']);
+    return toDouble(food['potassium']);
   }
 
   double getPhosphorus(Map<String, dynamic> food) {
-    return toDouble(
-      food['phosphatePer100g'] ??
-          food['phosphorusPer100g'] ??
-          food['phosphate'] ??
-          food['phosphorus'],
-    );
+    return toDouble(food['phosphate']);
+  }
+
+  bool isStatusHigh(String status) {
+    final text = status.toLowerCase();
+    return text.contains('exceeded') ||
+        text.contains('excessive') ||
+        text.contains('melebihi');
+  }
+
+  bool isStatusLow(String status) {
+    final text = status.toLowerCase();
+    return text.contains('deficient') ||
+        text.contains('kurang') ||
+        text.contains('rendah');
   }
 
   Set<String> getLoggedFoodNames() {
@@ -117,53 +126,58 @@ class AlternativeFoodScreen extends StatelessWidget {
 
   List<String> getAutomaticMealAdvice() {
     final Set<String> advice = {};
-
     final loggedFoods = getLoggedFoods();
 
-    if (potassiumStatus == 'Excessive') {
-      advice.add('Reduce high-potassium foods in this meal.');
+    if (isStatusHigh(potassiumStatus)) {
+      advice.add('Kurangkan makanan yang tinggi kalium dalam hidangan ini.');
       advice.add(
-        'Choose lower-potassium fruits such as apple, grapes, pineapple, papaya or watermelon.',
+        'Pilih buah yang lebih rendah kalium seperti epal, anggur, nanas, betik atau tembikai.',
       );
       advice.add(
-        'Boil vegetables before cooking and discard the boiling water.',
+        'Rebus sayur terlebih dahulu dan buang air rebusan sebelum dimasak.',
       );
       advice.add(
-        'Avoid drinking vegetable soup or broth because potassium may leach into the liquid.',
-      );
-    }
-
-    if (phosphorusStatus == 'Excessive') {
-      advice.add(
-        'Reduce foods high in phosphorus such as organ meats, processed meats, legumes and large meat portions.',
-      );
-      advice.add(
-        'Choose fresh foods instead of processed or packaged foods whenever possible.',
-      );
-      advice.add(
-        'Limit processed cheese, cola drinks and foods with phosphate additives.',
-      );
-      advice.add(
-        'Follow your dietitian’s advice regarding phosphate binder usage.',
+        'Elakkan minum sup atau kuah rebusan sayur kerana kalium boleh larut ke dalam air rebusan.',
       );
     }
 
-    if (proteinStatus == 'Excessive') {
+    if (isStatusHigh(phosphorusStatus)) {
       advice.add(
-        'Reduce the portion size of meat, chicken, fish, egg or seafood.',
+        'Kurangkan makanan tinggi fosforus seperti organ dalaman, daging proses, kekacang dan hidangan daging dalam jumlah besar.',
       );
-      advice.add('Avoid taking multiple high-protein foods in the same meal.');
       advice.add(
-        'Replace part of the protein portion with rice or suitable lower-potassium vegetables.',
+        'Pilih makanan segar berbanding makanan proses atau makanan berbungkus.',
+      );
+      advice.add(
+        'Hadkan keju proses, minuman berkola dan makanan yang mengandungi bahan tambahan fosfat.',
+      );
+      advice.add(
+        'Ikuti nasihat doktor atau pakar diet tentang penggunaan ubat pengikat fosfat.',
       );
     }
 
-    if (proteinStatus == 'Deficient') {
+    if (isStatusHigh(proteinStatus)) {
       advice.add(
-        'Include a suitable portion of high-quality protein such as chicken, fish or egg.',
+        'Kurangkan saiz hidangan daging, ayam, ikan, telur atau makanan laut.',
       );
-      advice.add('Spread protein intake evenly throughout the day.');
-      advice.add('Choose protein sources recommended by your healthcare team.');
+      advice.add(
+        'Elakkan mengambil terlalu banyak sumber protein dalam satu hidangan.',
+      );
+      advice.add(
+        'Gantikan sebahagian protein dengan nasi atau sayur rendah kalium yang sesuai.',
+      );
+    }
+
+    if (isStatusLow(proteinStatus)) {
+      advice.add(
+        'Ambil sumber protein berkualiti seperti ayam, ikan atau telur dalam jumlah yang sesuai.',
+      );
+      advice.add(
+        'Bahagikan pengambilan protein secara seimbang sepanjang hari.',
+      );
+      advice.add(
+        'Pilih sumber protein yang disarankan oleh doktor atau pakar diet anda.',
+      );
     }
 
     for (final food in loggedFoods) {
@@ -171,95 +185,107 @@ class AlternativeFoodScreen extends StatelessWidget {
 
       if (category == 'Hidangan Ayam') {
         advice.add(
-          'For chicken dishes, remove visible skin and reduce fried coating.',
+          'Untuk hidangan ayam, buang kulit yang kelihatan dan kurangkan salutan goreng.',
         );
         advice.add(
-          'Choose grilled, steamed or boiled chicken more often than fried chicken.',
+          'Pilih ayam panggang, kukus atau rebus berbanding ayam goreng.',
         );
-        advice.add('Reduce thick gravy or curry sauce.');
+        advice.add('Kurangkan kuah pekat, kari atau sos berlemak.');
       }
 
       if (category == 'Hidangan Daging' ||
           category == 'Hidangan Daging Merah') {
         advice.add(
-          'For red meat dishes, reduce portion size and choose lean cuts.',
+          'Untuk hidangan daging merah, kurangkan saiz hidangan dan pilih bahagian daging yang kurang lemak.',
         );
-        advice.add('Avoid eating large portions of red meat frequently.');
-        advice.add('Limit thick curry, rendang or salty sauces.');
+        advice.add(
+          'Elakkan mengambil daging merah dalam jumlah besar dengan kerap.',
+        );
+        advice.add('Hadkan kuah kari pekat, rendang atau sos yang masin.');
       }
 
       if (category == 'Ikan dan Makanan Laut') {
         advice.add(
-          'Choose fresh fish or seafood instead of salted or processed seafood.',
+          'Pilih ikan atau makanan laut segar berbanding makanan laut masin atau proses.',
         );
-        advice.add('Limit salty items such as ikan asin and budu.');
+        advice.add('Hadkan makanan masin seperti ikan masin dan budu.');
         advice.add(
-          'Control seafood portion size to manage protein and phosphorus intake.',
+          'Kawal saiz hidangan makanan laut untuk mengurus pengambilan protein dan fosforus.',
         );
       }
 
       if (category == 'Sayur-sayuran') {
         advice.add(
-          'Boil vegetables first and throw away the water before cooking.',
+          'Rebus sayur terlebih dahulu dan buang air rebusan sebelum dimasak.',
         );
-        advice.add('Avoid using vegetable broth in soups or gravies.');
         advice.add(
-          'Choose lower-potassium vegetables when potassium intake is high.',
+          'Elakkan menggunakan air rebusan sayur dalam sup atau kuah.',
+        );
+        advice.add(
+          'Pilih sayur yang lebih rendah kalium jika pengambilan kalium anda tinggi.',
         );
       }
 
       if (category == 'Buah-buahan') {
-        advice.add('Control fruit portion size.');
+        advice.add('Kawal saiz hidangan buah-buahan.');
         advice.add(
-          'Choose lower-potassium fruits when potassium level is high.',
+          'Pilih buah yang lebih rendah kalium jika tahap kalium anda tinggi.',
         );
-        advice.add('Limit high-potassium fruits such as banana.');
+        advice.add('Hadkan buah tinggi kalium seperti pisang.');
       }
 
       if (category == 'Mi dan Pasta') {
-        advice.add('Reduce soup or curry broth intake.');
+        advice.add('Kurangkan pengambilan kuah sup atau kuah kari.');
         advice.add(
-          'Limit processed toppings such as fish balls, sausages or processed meat.',
+          'Hadkan bahan proses seperti bebola ikan, sosej atau daging proses.',
         );
         advice.add(
-          'Choose smaller noodle portions and balance with suitable vegetables.',
+          'Pilih saiz hidangan mi yang lebih kecil dan seimbangkan dengan sayur yang sesuai.',
         );
       }
 
       if (category == 'Hidangan Nasi') {
-        advice.add('Control rice portion size according to your meal plan.');
-        advice.add('Reduce salty or oily side dishes served with rice.');
-        advice.add('Choose plain rice more often than oily rice dishes.');
+        advice.add('Kawal saiz hidangan nasi mengikut pelan pemakanan anda.');
+        advice.add(
+          'Kurangkan lauk yang terlalu masin atau berminyak bersama nasi.',
+        );
+        advice.add(
+          'Pilih nasi putih berbanding nasi berminyak dengan lebih kerap.',
+        );
       }
 
       if (category == 'Snek dan Makanan Bergoreng') {
         advice.add(
-          'Limit fried snacks because they are usually high in calories and fat.',
+          'Hadkan snek bergoreng kerana biasanya tinggi kalori dan lemak.',
         );
-        advice.add('Choose steamed, boiled or baked options more often.');
-        advice.add('Take smaller portions of fried foods.');
+        advice.add('Pilih pilihan kukus, rebus atau bakar dengan lebih kerap.');
+        advice.add('Ambil makanan bergoreng dalam saiz hidangan yang kecil.');
       }
 
       if (category == 'Kekacang dan Legum') {
         advice.add(
-          'Limit legumes such as dhal, lentils, chickpeas and beans if potassium or phosphorus is high.',
+          'Hadkan kekacang seperti dhal, lentil, kacang kuda dan kacang jika kalium atau fosforus tinggi.',
         );
         advice.add(
-          'Take smaller portions of legumes and balance with lower-potassium foods.',
+          'Ambil kekacang dalam jumlah kecil dan seimbangkan dengan makanan rendah kalium.',
         );
       }
 
       if (category == 'Minuman dan Bahan Minuman') {
-        advice.add('Limit instant drink powders and highly processed drinks.');
-        advice.add('Choose plain water based on your fluid allowance.');
+        advice.add(
+          'Hadkan serbuk minuman segera dan minuman yang terlalu diproses.',
+        );
+        advice.add('Pilih air kosong mengikut had cecair yang disarankan.');
       }
     }
 
     if (advice.isEmpty) {
-      advice.add('Choose fresh home-cooked meals whenever possible.');
-      advice.add('Control portion size and avoid oversized meals.');
-      advice.add('Limit processed, salty and fried foods.');
-      advice.add('Follow your dietitian’s personalized dietary advice.');
+      advice.add('Pilih makanan segar dan masakan di rumah jika boleh.');
+      advice.add('Kawal saiz hidangan dan elakkan makan secara berlebihan.');
+      advice.add('Hadkan makanan proses, masin dan bergoreng.');
+      advice.add(
+        'Ikuti nasihat pemakanan yang diberikan oleh pakar diet anda.',
+      );
     }
 
     return advice.toList();
@@ -296,13 +322,13 @@ class AlternativeFoodScreen extends StatelessWidget {
       return 0;
     }
 
-    if (proteinStatus == 'Deficient') {
+    if (isStatusLow(proteinStatus)) {
       if (protein > 0 && protein <= proteinTarget) {
         score += 4;
       } else if (protein > proteinTarget) {
         score += 1;
       }
-    } else if (proteinStatus == 'Excessive') {
+    } else if (isStatusHigh(proteinStatus)) {
       if (protein <= proteinTarget) {
         score += 4;
       } else {
@@ -331,7 +357,7 @@ class AlternativeFoodScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          'Meal Suggestions',
+          'Cadangan Makanan',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -345,14 +371,14 @@ class AlternativeFoodScreen extends StatelessWidget {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Error loading data:\n${snapshot.error}',
+                'Ralat semasa memuatkan data:\n${snapshot.error}',
                 textAlign: TextAlign.center,
               ),
             );
           }
 
           if (!snapshot.hasData) {
-            return const Center(child: Text('No data found.'));
+            return const Center(child: Text('Tiada data dijumpai.'));
           }
 
           final foods = snapshot.data!;
@@ -372,7 +398,7 @@ class AlternativeFoodScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             children: [
               const Text(
-                'Meal Modification Suggestions',
+                'Cadangan Penambahbaikan Hidangan',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -383,7 +409,7 @@ class AlternativeFoodScreen extends StatelessWidget {
               const SizedBox(height: 6),
 
               Text(
-                'These suggestions are generated based on your current meal condition and food category.',
+                'Cadangan ini dijana berdasarkan keadaan hidangan semasa dan kategori makanan yang dipilih.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.green.shade900,
@@ -398,7 +424,7 @@ class AlternativeFoodScreen extends StatelessWidget {
               const SizedBox(height: 22),
 
               const Text(
-                'Better Food Suggestions',
+                'Cadangan Makanan yang Lebih Sesuai',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -413,7 +439,7 @@ class AlternativeFoodScreen extends StatelessWidget {
                   padding: EdgeInsets.only(top: 20),
                   child: Center(
                     child: Text(
-                      'No suitable food found based on your meal condition.',
+                      'Tiada makanan yang sesuai dijumpai berdasarkan keadaan hidangan anda.',
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -450,7 +476,7 @@ class AlternativeFoodScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'General Advice for This Meal',
+            'Nasihat Umum untuk Hidangan Ini',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -486,6 +512,7 @@ class AlternativeFoodScreen extends StatelessWidget {
 
   Widget alternativeFoodCard(Map<String, dynamic> food) {
     final String name = getDisplayName(food);
+    final double servingSize = toDouble(food['servingSize']);
     final double calories = getCalories(food);
     final double protein = getProtein(food);
     final double potassium = getPotassium(food);
@@ -526,29 +553,49 @@ class AlternativeFoodScreen extends StatelessWidget {
                 const SizedBox(height: 6),
 
                 Text(
-                  '${calories.toStringAsFixed(0)} kcal',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  'Saiz hidangan: ${servingSize.toStringAsFixed(0)}g',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 21, 43, 36),
+                  ),
+                ),
+
+                Text(
+                  'Kalori: ${calories.toStringAsFixed(0)} kcal',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 21, 43, 36),
+                  ),
                 ),
 
                 const SizedBox(height: 3),
 
                 Text(
                   'Protein: ${protein.toStringAsFixed(1)}g',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 21, 43, 36),
+                  ),
                 ),
 
                 const SizedBox(height: 3),
 
                 Text(
-                  'Potassium: ${potassium.toStringAsFixed(0)}mg',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  'Kalium: ${potassium.toStringAsFixed(0)}mg',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 21, 43, 36),
+                  ),
                 ),
 
                 const SizedBox(height: 3),
 
                 Text(
-                  'Phosphorus: ${phosphorus.toStringAsFixed(0)}mg',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  'Fosfat: ${phosphorus.toStringAsFixed(0)}mg',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 21, 43, 36),
+                  ),
                 ),
               ],
             ),

@@ -71,7 +71,7 @@ class _UserprofileScreenState extends State<UserprofileScreen> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          "Profile",
+          "Profil",
           style: TextStyle(
             color: Color.fromARGB(255, 251, 251, 251),
             fontWeight: FontWeight.bold,
@@ -88,7 +88,7 @@ class _UserprofileScreenState extends State<UserprofileScreen> {
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text("No data found"));
+            return const Center(child: Text("Tiada data dijumpai"));
           }
 
           final data = snapshot.data!;
@@ -119,12 +119,12 @@ class _UserprofileScreenState extends State<UserprofileScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        user?.email ?? "No Email",
+                        user?.email ?? "Tiada Emel",
                         style: const TextStyle(color: Colors.white),
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        "@${data['userId'] ?? 'N/A'}",
+                        "@${data['userId'] ?? 'Tiada'}",
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -134,63 +134,63 @@ class _UserprofileScreenState extends State<UserprofileScreen> {
                   ),
                 ),
 
-                // ===== BASIC INFO =====
+                // ===== MAKLUMAT ASAS =====
                 buildSectionCard(
                   child: Column(
                     children: [
                       infoRow(
-                        "Full Name",
-                        data['fullName'] ?? "N/A",
+                        "Nama Penuh",
+                        data['fullName'] ?? "Tiada",
                         Icons.person,
                       ),
                       const Divider(),
 
                       infoRow(
-                        "Age",
-                        "${data['age'] ?? "N/A"} years",
+                        "Umur",
+                        "${data['age'] ?? "Tiada"} tahun",
                         Icons.cake,
                       ),
                       const Divider(),
 
-                      infoRow("Gender", data['gender'] ?? "N/A", Icons.wc),
+                      infoRow("Jantina", data['gender'] ?? "Tiada", Icons.wc),
                     ],
                   ),
                 ),
 
-                // ===== BODY INFO =====
+                // ===== MAKLUMAT FIZIKAL =====
                 buildSectionCard(
                   child: Column(
                     children: [
                       infoRow(
-                        "Height",
-                        "${data['height'] ?? "N/A"} cm",
+                        "Tinggi",
+                        "${data['height'] ?? "Tiada"} cm",
                         Icons.height,
                       ),
                       const Divider(),
 
                       infoRow(
-                        "Weight",
-                        "${data['weight'] ?? "N/A"} kg",
+                        "Berat",
+                        "${data['weight'] ?? "Tiada"} kg",
                         Icons.monitor_weight,
                       ),
                     ],
                   ),
                 ),
 
-                // ===== MEDICAL INFO =====
+                // ===== MAKLUMAT PERUBATAN =====
                 buildSectionCard(
                   child: Column(
                     children: [
                       infoRow(
-                        "Disease",
-                        data['typeOfDisease'] ?? "N/A",
+                        "Penyakit",
+                        data['typeOfDisease'] ?? "Tiada",
                         Icons.medical_services,
                       ),
                       const Divider(),
 
                       infoRow(
-                        "Stage",
-                        data['stage'] ?? "N/A",
+                        "Tahap",
+                        data['stage'] ?? "Tiada",
                         Icons.local_hospital,
                       ),
                     ],

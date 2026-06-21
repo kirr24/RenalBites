@@ -26,13 +26,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'If this email is registered, a reset link has been sent.',
+            'Jika e-mel ini berdaftar, pautan tetapan semula kata laluan telah dihantar ke e-mel anda.',
           ),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error sending password reset email.')),
+        const SnackBar(content: Text('Ralat berlaku, sila cuba lagi!')),
       );
     }
   }
@@ -74,7 +74,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 28),
 
                 const Text(
-                  "Forgot Password?",
+                  "Lupa Kata Laluan?",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 34,
@@ -86,7 +86,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 10),
 
                 const Text(
-                  "Enter your email address and we will send you a link to reset your password.",
+                  "Masukkan alamat e-mel anda dan kami akan menghantar pautan untuk menetapkan semula kata laluan anda.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -116,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: 'Email',
+                          labelText: 'E-mel',
                           prefixIcon: const Icon(Icons.email_outlined),
                           filled: true,
                           fillColor: const Color.fromARGB(255, 238, 250, 243),
@@ -154,7 +154,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                           onPressed: passwordReset,
                           child: const Text(
-                            'Send Reset Link',
+                            'Pautan Tetapan Semula',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -174,7 +174,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     Navigator.pop(context);
                   },
                   child: const Text(
-                    "Back to Login",
+                    "Kembali ke Log Masuk",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -17,7 +17,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
     final Uri url = Uri.parse(link);
 
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      debugPrint("Could not launch $link");
+      debugPrint("Tidak dapat membuka $link");
     }
   }
 
@@ -28,7 +28,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          "Kidney Disease Info",
+          "Informasi",
           style: TextStyle(
             color: Color.fromARGB(255, 251, 251, 251),
             fontWeight: FontWeight.bold,
@@ -42,7 +42,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Helpful resources to learn about kidney disease",
+              "Sumber maklumat berguna untuk mempelajari tentang penyakit buah pinggang",
               style: TextStyle(
                 fontSize: 18,
                 fontStyle: FontStyle.italic,
@@ -61,7 +61,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search topics...",
+                hintText: "Cari topik...",
                 prefixIcon: const Icon(
                   Icons.search,
                   color: Color.fromARGB(221, 10, 29, 28),
@@ -89,7 +89,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
                   if (snapshot.hasError) {
                     return Center(
                       child: Text(
-                        "Firestore error:\n${snapshot.error}",
+                        "Ralat Firestore:\n${snapshot.error}",
                         textAlign: TextAlign.center,
                       ),
                     );
@@ -102,7 +102,9 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
                   final documents = snapshot.data?.docs ?? [];
 
                   if (documents.isEmpty) {
-                    return const Center(child: Text("No information found."));
+                    return const Center(
+                      child: Text("Tiada maklumat dijumpai."),
+                    );
                   }
 
                   final filteredDocs = documents.where((doc) {
@@ -118,7 +120,7 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
 
                   if (filteredDocs.isEmpty) {
                     return const Center(
-                      child: Text("No matching topics found."),
+                      child: Text("Tiada topik yang sepadan dijumpai."),
                     );
                   }
 
@@ -129,9 +131,9 @@ class _KidneyDiseaseInfoScreenState extends State<KidneyDiseaseInfoScreen> {
                           filteredDocs[index].data() as Map<String, dynamic>;
 
                       final String title =
-                          data['title']?.toString() ?? 'No title';
+                          data['title']?.toString() ?? 'Tiada tajuk';
                       final String source =
-                          data['source']?.toString() ?? 'No source';
+                          data['source']?.toString() ?? 'Tiada sumber';
 
                       final String imageUrl =
                           data['imageUrl']?.toString() ??

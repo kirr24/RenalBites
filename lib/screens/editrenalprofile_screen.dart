@@ -54,22 +54,28 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
     final disease = typeOfDisease.toLowerCase();
     final stageNum = stage.toLowerCase();
 
-    if (disease.contains('hemodialysis')) {
+    if (disease.contains('hemodialysis') || disease.contains('hemodialisis')) {
       return (weight * 1.2).toStringAsFixed(0);
     }
 
-    if (stageNum.contains('stage 1') || stageNum.contains('stage 2')) {
+    if (stageNum.contains('stage 1') ||
+        stageNum.contains('stage 2') ||
+        stageNum.contains('tahap 1') ||
+        stageNum.contains('tahap 2')) {
       return (weight * 0.8).toStringAsFixed(0);
     }
 
     if (stageNum.contains('stage 3') ||
         stageNum.contains('stage 4') ||
-        stageNum.contains('stage 5')) {
+        stageNum.contains('stage 5') ||
+        stageNum.contains('tahap 3') ||
+        stageNum.contains('tahap 4') ||
+        stageNum.contains('tahap 5')) {
       final protein = weight * 0.8;
       return protein.toStringAsFixed(0);
     }
 
-    return "N/A";
+    return "Tidak Berkenaan";
   }
 
   String calculatePotassiumLimit({
@@ -78,11 +84,11 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
   }) {
     final disease = typeOfDisease.toLowerCase();
 
-    if (disease.contains('hemodialysis')) {
+    if (disease.contains('hemodialysis') || disease.contains('hemodialisis')) {
       return "3000";
     }
 
-    return "No restriction unless blood potassium level is elevated";
+    return "Tiada sekatan kecuali paras kalium dalam darah tinggi";
   }
 
   String calculatePhosphateLimit({
@@ -92,30 +98,34 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
     final disease = typeOfDisease.toLowerCase();
     final stageNum = stage.toLowerCase();
 
-    if (disease.contains('hemodialysis')) {
+    if (disease.contains('hemodialysis') || disease.contains('hemodialisis')) {
       return "1000";
     }
 
-    if (stageNum.contains('stage 1') || stageNum.contains('stage 2')) {
-      return "No restriction";
+    if (stageNum.contains('stage 1') ||
+        stageNum.contains('stage 2') ||
+        stageNum.contains('tahap 1') ||
+        stageNum.contains('tahap 2')) {
+      return "Tiada sekatan";
     }
 
     if (stageNum.contains('stage 3') ||
         stageNum.contains('stage 4') ||
-        stageNum.contains('stage 5')) {
+        stageNum.contains('stage 5') ||
+        stageNum.contains('tahap 3') ||
+        stageNum.contains('tahap 4') ||
+        stageNum.contains('tahap 5')) {
       return "1000";
     }
 
-    return "N/A";
+    return "Tidak Berkenaan";
   }
 
   void initializeControllers(Map<String, dynamic> data) {
     if (initialized) return;
 
     final double weight = double.tryParse(data['weight'].toString()) ?? 0.0;
-
     final String stage = data['stage']?.toString() ?? "";
-
     final String typeOfDisease = data['typeOfDisease']?.toString() ?? "";
 
     caloriesController.text =
@@ -150,9 +160,9 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
       'phosphateLimit': phosphateController.text.trim(),
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Limits saved successfully!")));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Had nutrien berjaya disimpan!")),
+    );
 
     Navigator.pop(context);
   }
@@ -167,7 +177,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
         border: Border.all(color: const Color(0xFF223C3A), width: 3),
       ),
       child: const Text(
-        "You may edit the recommended nutrient limits below based on advice from your doctor or renal dietitian.",
+        "Anda boleh mengubah suai had nutrien yang disyorkan di bawah berdasarkan nasihat doktor atau pegawai dietetik buah pinggang anda.",
         style: TextStyle(
           color: Color(0xFF223C3A),
           fontSize: 13,
@@ -185,6 +195,10 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
     required IconData icon,
     required Color color,
   }) {
+    final bool noUnit =
+        recommendedValue.toLowerCase().contains('tiada') ||
+        recommendedValue.toLowerCase().contains('tidak');
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -217,7 +231,9 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
           const SizedBox(height: 10),
 
           Text(
-            "Recommended: $recommendedValue $unit",
+            noUnit
+                ? "Disyorkan: $recommendedValue"
+                : "Disyorkan: $recommendedValue $unit",
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -233,7 +249,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
               fontWeight: FontWeight.bold,
             ),
             decoration: const InputDecoration(
-              hintText: "Edit if needed",
+              hintText: "Ubah jika perlu",
               hintStyle: TextStyle(color: Colors.white70),
               enabledBorder: UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.white),
@@ -261,7 +277,9 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
             }
 
             if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(child: Text("No user data found"));
+              return const Center(
+                child: Text("Tiada maklumat pengguna ditemui"),
+              );
             }
 
             initializeControllers(snapshot.data!);
@@ -272,7 +290,6 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                 double.tryParse(data['weight'].toString()) ?? 0.0;
 
             final String stage = data['stage']?.toString() ?? "";
-
             final String typeOfDisease =
                 data['typeOfDisease']?.toString() ?? "";
 
@@ -290,7 +307,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          "Your Daily Limits",
+                          "Had Nutrien Harian Anda",
                           style: TextStyle(
                             color: Color(0xFF223C3A),
                             fontSize: 20,
@@ -306,7 +323,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                   const SizedBox(height: 18),
 
                   nutrientBox(
-                    title: "Calories",
+                    title: "Kalori",
                     recommendedValue: calculateCaloriesLimit(weight),
                     controller: caloriesController,
                     unit: "kcal",
@@ -332,7 +349,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                   const SizedBox(height: 12),
 
                   nutrientBox(
-                    title: "Potassium",
+                    title: "Kalium",
                     recommendedValue: calculatePotassiumLimit(
                       typeOfDisease: typeOfDisease,
                       stage: stage,
@@ -346,7 +363,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                   const SizedBox(height: 12),
 
                   nutrientBox(
-                    title: "Phosphate",
+                    title: "Fosfat",
                     recommendedValue: calculatePhosphateLimit(
                       typeOfDisease: typeOfDisease,
                       stage: stage,
@@ -371,7 +388,7 @@ class _EditRenalProfileScreenState extends State<EditRenalProfileScreen> {
                       ),
                       onPressed: saveLimits,
                       child: const Text(
-                        "Save Limits",
+                        "Simpan Had Nutrien",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,

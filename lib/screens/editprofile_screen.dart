@@ -33,18 +33,21 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
   String? selectedDisease;
   String? selectedStage;
 
-  List<String> genderList = ['Male', 'Female'];
-  List<String> diseaseList = ['Hemodialysis', 'Chronic Kidney Disease'];
+  final Color darkGreen = const Color.fromARGB(255, 35, 63, 45);
+  final Color softGreen = const Color.fromARGB(255, 224, 247, 233);
+
+  List<String> genderList = ['Lelaki', 'Perempuan'];
+  List<String> diseaseList = ['Hemodialisis', 'Penyakit Buah Pinggang Kronik'];
   List<String> stageList = [
-    'Stage 1',
-    'Stage 2',
-    'Stage 3',
-    'Stage 4',
-    'Stage 5',
+    'Tahap 1',
+    'Tahap 2',
+    'Tahap 3',
+    'Tahap 4',
+    'Tahap 5',
   ];
 
   bool get needsStage {
-    return selectedDisease != null && selectedDisease != 'Hemodialysis';
+    return selectedDisease != null && selectedDisease != 'Hemodialisis';
   }
 
   @override
@@ -61,6 +64,29 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     heightController.dispose();
     weightController.dispose();
     super.dispose();
+  }
+
+  String convertGender(String value) {
+    if (value == 'Male') return 'Lelaki';
+    if (value == 'Female') return 'Perempuan';
+    return value;
+  }
+
+  String convertDisease(String value) {
+    if (value == 'Hemodialysis') return 'Hemodialisis';
+    if (value == 'Chronic Kidney Disease') {
+      return 'Penyakit Buah Pinggang Kronik';
+    }
+    return value;
+  }
+
+  String convertStage(String value) {
+    if (value == 'Stage 1') return 'Tahap 1';
+    if (value == 'Stage 2') return 'Tahap 2';
+    if (value == 'Stage 3') return 'Tahap 3';
+    if (value == 'Stage 4') return 'Tahap 4';
+    if (value == 'Stage 5') return 'Tahap 5';
+    return value;
   }
 
   Future<void> loadUserData() async {
@@ -91,12 +117,17 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
         oldUserId = data['userId']?.toString() ?? '';
         photoUrl = data['photoUrl']?.toString() ?? '';
 
-        selectedGender = data['gender']?.toString();
-        selectedDisease = data['typeOfDisease']?.toString();
+        String gender = convertGender(data['gender']?.toString() ?? '');
+        String disease = convertDisease(
+          data['typeOfDisease']?.toString() ?? '',
+        );
 
-        String savedStage = data['stage']?.toString() ?? '';
+        selectedGender = genderList.contains(gender) ? gender : null;
+        selectedDisease = diseaseList.contains(disease) ? disease : null;
 
-        if (selectedDisease == 'Hemodialysis') {
+        String savedStage = convertStage(data['stage']?.toString() ?? '');
+
+        if (selectedDisease == 'Hemodialisis') {
           selectedStage = null;
         } else if (stageList.contains(savedStage)) {
           selectedStage = savedStage;
@@ -111,8 +142,8 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     }
   }
 
-  Future<void> selectImage() async {
-    Uint8List? image = await pickImage(ImageSource.gallery);
+  Future<void> selectImage(ImageSource source) async {
+    Uint8List? image = await pickImage(source);
 
     if (image != null) {
       setState(() {
@@ -130,8 +161,7 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     UploadTask uploadTask = ref.putData(profileImage!);
     TaskSnapshot snapshot = await uploadTask;
 
-    String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+    return await snapshot.ref.getDownloadURL();
   }
 
   Future<bool> checkUserID(String userId) async {
@@ -147,9 +177,9 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No logged-in user found')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tiada pengguna yang log masuk dijumpai')),
+      );
       return;
     }
 
@@ -168,7 +198,9 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
         selectedDisease == null ||
         (needsStage && selectedStage == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
+        const SnackBar(
+          content: Text('Sila lengkapkan semua maklumat yang diperlukan'),
+        ),
       );
       return;
     }
@@ -179,21 +211,25 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
 
     if (age == null || height == null || weight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid numbers')),
+        const SnackBar(content: Text('Sila masukkan nombor yang sah')),
       );
       return;
     }
 
     if (newUserId.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User ID must be at least 4 characters')),
+        const SnackBar(
+          content: Text('ID pengguna mestilah sekurang-kurangnya 4 aksara'),
+        ),
       );
       return;
     }
 
     if (newUserId.contains(' ')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User ID cannot contain spaces')),
+        const SnackBar(
+          content: Text('ID pengguna tidak boleh mengandungi ruang'),
+        ),
       );
       return;
     }
@@ -208,7 +244,7 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
 
         if (!available) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User ID already taken')),
+            const SnackBar(content: Text('ID pengguna ini telah digunakan')),
           );
 
           setState(() {
@@ -237,7 +273,9 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
         finalPhotoUrl = await uploadProfilePic(user.uid);
       }
 
-      String stage = selectedDisease == 'Hemodialysis' ? 'N/A' : selectedStage!;
+      String stage = selectedDisease == 'Hemodialisis'
+          ? 'Tidak berkaitan'
+          : selectedStage!;
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -261,15 +299,27 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Profile Updated'),
-            content: const Text('Your profile has been updated successfully.'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Profil Dikemas Kini',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text('Profil anda telah berjaya dikemas kini.'),
             actions: [
-              TextButton(
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: darkGreen,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: () {
                   Navigator.pop(context);
                   Navigator.pop(context);
                 },
-                child: const Text('OK'),
+                child: const Text('OK', style: TextStyle(color: Colors.white)),
               ),
             ],
           );
@@ -278,7 +328,7 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('Berlaku ralat: $e')));
     }
 
     if (mounted) {
@@ -299,24 +349,87 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(),
+        prefixIcon: Icon(icon, color: darkGreen),
         filled: true,
-        fillColor: const Color.fromARGB(255, 246, 246, 246),
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: darkGreen, width: 2),
+        ),
       ),
     );
   }
 
-  Widget cardBox({required Widget child}) {
+  Widget sectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(15),
+      margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 246, 246, 246),
-        border: Border.all(color: Colors.green),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: darkGreen),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: darkGreen,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget dropdownInput({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: darkGreen, width: 2),
+        ),
+      ),
+      items: items.map((item) {
+        return DropdownMenuItem(value: item, child: Text(item));
+      }).toList(),
+      onChanged: onChanged,
     );
   }
 
@@ -337,12 +450,18 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 224, 247, 233),
+      backgroundColor: softGreen,
       appBar: AppBar(
-        title: const Text('Edit Profile'),
         centerTitle: true,
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
+        backgroundColor: darkGreen,
+        title: const Text(
+          'Edit Profil',
+          style: TextStyle(
+            color: Color.fromARGB(255, 251, 251, 251),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -351,55 +470,158 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
                 children: [
                   const SizedBox(height: 20),
 
-                  GestureDetector(
-                    onTap: selectImage,
-                    child: CircleAvatar(
-                      radius: 55,
-                      backgroundColor: Colors.grey,
-                      backgroundImage: profileProvider,
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 18),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 192, 222, 187),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20),
+                                ),
+                              ),
+                              builder: (context) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: Icon(
+                                          Icons.camera_alt,
+                                          color: darkGreen,
+                                        ),
+                                        title: const Text('Ambil gambar'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          selectImage(ImageSource.camera);
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: Icon(
+                                          Icons.photo_library,
+                                          color: darkGreen,
+                                        ),
+                                        title: const Text('Pilih dari galeri'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          selectImage(ImageSource.gallery);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 58,
+                                backgroundColor: softGreen,
+                                backgroundImage: profileProvider,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: darkGreen,
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Foto Profil',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Color.fromARGB(255, 26, 58, 39),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          user?.email ?? 'Tiada e-mel',
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 26, 58, 39),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 15),
 
-                  const Text('Tap image to change profile picture'),
-
-                  const SizedBox(height: 5),
-
-                  Text(user?.email ?? 'No email'),
-
-                  cardBox(
+                  sectionCard(
+                    title: 'Maklumat Peribadi',
+                    icon: Icons.person,
                     child: Column(
                       children: [
                         textInput(
                           controller: userIdController,
-                          label: 'User ID',
-                          icon: Icons.person,
+                          label: 'ID Pengguna',
+                          icon: Icons.alternate_email,
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 14),
                         textInput(
                           controller: fullNameController,
-                          label: 'Full Name',
+                          label: 'Nama Penuh',
                           icon: Icons.badge,
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 14),
                         textInput(
                           controller: ageController,
-                          label: 'Age',
+                          label: 'Umur',
                           icon: Icons.cake,
                           keyboardType: TextInputType.number,
                         ),
-                        const SizedBox(height: 15),
+                      ],
+                    ),
+                  ),
+
+                  sectionCard(
+                    title: 'Maklumat Fizikal',
+                    icon: Icons.monitor_weight,
+                    child: Column(
+                      children: [
                         textInput(
                           controller: heightController,
-                          label: 'Height (cm)',
+                          label: 'Tinggi (cm)',
                           icon: Icons.height,
                           keyboardType: TextInputType.number,
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 14),
                         textInput(
                           controller: weightController,
-                          label: 'Weight (kg)',
+                          label: 'Berat (kg)',
                           icon: Icons.monitor_weight,
                           keyboardType: TextInputType.number,
                         ),
@@ -407,73 +629,42 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
                     ),
                   ),
 
-                  cardBox(
+                  sectionCard(
+                    title: 'Maklumat Kesihatan',
+                    icon: Icons.health_and_safety,
                     child: Column(
                       children: [
-                        DropdownButtonFormField<String>(
+                        dropdownInput(
+                          label: 'Jantina',
                           value: selectedGender,
-                          decoration: const InputDecoration(
-                            labelText: 'Gender',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          items: genderList.map((gender) {
-                            return DropdownMenuItem(
-                              value: gender,
-                              child: Text(gender),
-                            );
-                          }).toList(),
+                          items: genderList,
                           onChanged: (value) {
                             setState(() {
                               selectedGender = value;
                             });
                           },
                         ),
-
-                        const SizedBox(height: 15),
-
-                        DropdownButtonFormField<String>(
+                        const SizedBox(height: 14),
+                        dropdownInput(
+                          label: 'Jenis Penyakit',
                           value: selectedDisease,
-                          decoration: const InputDecoration(
-                            labelText: 'Type of Disease',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          items: diseaseList.map((disease) {
-                            return DropdownMenuItem(
-                              value: disease,
-                              child: Text(disease),
-                            );
-                          }).toList(),
+                          items: diseaseList,
                           onChanged: (value) {
                             setState(() {
                               selectedDisease = value;
 
-                              if (value == 'Hemodialysis') {
+                              if (value == 'Hemodialisis') {
                                 selectedStage = null;
                               }
                             });
                           },
                         ),
-
                         if (needsStage) ...[
-                          const SizedBox(height: 15),
-                          DropdownButtonFormField<String>(
+                          const SizedBox(height: 14),
+                          dropdownInput(
+                            label: 'Tahap Penyakit Buah Pinggang',
                             value: selectedStage,
-                            decoration: const InputDecoration(
-                              labelText: 'Stage of Disease',
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                            items: stageList.map((stage) {
-                              return DropdownMenuItem(
-                                value: stage,
-                                child: Text(stage),
-                              );
-                            }).toList(),
+                            items: stageList,
                             onChanged: (value) {
                               setState(() {
                                 selectedStage = value;
@@ -486,22 +677,30 @@ class _EditprofileScreenState extends State<EditprofileScreen> {
                   ),
 
                   Padding(
-                    padding: const EdgeInsets.all(15),
+                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 25),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 54,
                       child: ElevatedButton(
                         onPressed: isSaving ? null : updateProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800],
+                          backgroundColor: darkGreen,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 4,
                         ),
                         child: isSaving
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
                             : const Text(
-                                'Update Profile',
-                                style: TextStyle(color: Colors.white),
+                                'Kemas Kini Profil',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ),

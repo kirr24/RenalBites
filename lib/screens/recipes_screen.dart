@@ -56,7 +56,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
     required String recipeId,
     required Map<String, dynamic> recipe,
   }) {
-    final recipeName = recipe['recipeName']?.toString() ?? 'Untitled Recipe';
+    final recipeName = recipe['recipeName']?.toString() ?? 'Resipi Tanpa Tajuk';
     final photoUrl = recipe['photoUrl']?.toString() ?? '';
 
     return Container(
@@ -124,7 +124,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 Row(
                   children: [
                     smallButton(
-                      text: "View",
+                      text: "Lihat",
                       onTap: () {
                         Navigator.push(
                           context,
@@ -152,7 +152,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                     ),
                     const SizedBox(width: 6),
                     smallButton(
-                      text: "Delete",
+                      text: "Padam",
                       onTap: () {
                         deleteRecipe(recipeId);
                       },
@@ -192,7 +192,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          "Recipes",
+          "Resipi",
           style: TextStyle(
             color: Color.fromARGB(255, 251, 251, 251),
             fontWeight: FontWeight.bold,
@@ -212,7 +212,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              "Tasty recipes to help you find meal ideas!",
+              "Resipi lazat untuk membantu anda mendapatkan idea hidangan!",
               style: TextStyle(
                 fontSize: 19,
                 fontWeight: FontWeight.w600,
@@ -230,7 +230,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search recipe...",
+                hintText: "Cari resipi...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
@@ -271,7 +271,9 @@ class _RecipesScreenState extends State<RecipesScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return const Center(child: Text("Unable to load recipes."));
+                  return const Center(
+                    child: Text("Resipi tidak dapat dimuatkan."),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -291,7 +293,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                         ),
                         SizedBox(height: 10),
                         Text(
-                          "No recipes yet.\nTap + to add your first recipe.",
+                          "Tiada resipi lagi.\nTekan + untuk tambah resipi pertama anda.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 15,
@@ -307,7 +309,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
 
                 if (recipes.isEmpty) {
                   return const Center(
-                    child: Text("No matching recipes found."),
+                    child: Text("Tiada resipi yang sepadan dijumpai."),
                   );
                 }
 

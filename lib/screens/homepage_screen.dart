@@ -91,9 +91,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<Map<String, dynamic>?> prepareMealResult() async {
     if (selectedMealType == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select meal type')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sila pilih jenis hidangan')),
+      );
       return null;
     }
 
@@ -110,7 +110,7 @@ class _HomePageState extends State<HomePage> {
       if (foodName == null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Please select food')));
+        ).showSnackBar(const SnackBar(content: Text('Sila pilih makanan')));
         return null;
       }
 
@@ -118,7 +118,9 @@ class _HomePageState extends State<HomePage> {
 
       if (firebaseData == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$foodName not found in database')),
+          SnackBar(
+            content: Text('$foodName tidak dijumpai dalam pangkalan data'),
+          ),
         );
         return null;
       }
@@ -136,17 +138,11 @@ class _HomePageState extends State<HomePage> {
 
       foodDetails.add({
         "mealName": foodName,
-        "servingSize": servingSize,
         "serving": "${servingSize.toStringAsFixed(0)} g",
         "calories": calories,
         "protein": protein,
         "potassium": potassium,
         "phosphate": phosphate,
-        "caloriesPerServing": calories,
-        "proteinPerServing": protein,
-        "potassiumPerServing": potassium,
-        "phosphatePerServing": phosphate,
-        "foodData": firebaseData,
       });
     }
 
@@ -221,7 +217,7 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(content: Text('Berlaku ralat: $e')));
     }
 
     if (mounted) {
@@ -250,13 +246,13 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Meal saved successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hidangan berjaya disimpan')),
+      );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(content: Text('Berlaku ralat: $e')));
     }
 
     if (mounted) {
@@ -314,7 +310,7 @@ class _HomePageState extends State<HomePage> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Note: The app uses the standard serving size stored in the system for each food.',
+              'Nota: Aplikasi ini menggunakan saiz hidangan standard yang disimpan dalam sistem bagi setiap makanan.',
               style: TextStyle(
                 fontSize: 14,
                 color: Color.fromARGB(255, 80, 70, 40),
@@ -409,7 +405,7 @@ class _HomePageState extends State<HomePage> {
   Widget foodDropdown(FoodInput food) {
     if (selectedCategory == null) {
       return const Text(
-        'Please select food category first',
+        'Sila pilih kategori makanan terlebih dahulu',
         style: TextStyle(color: Colors.grey),
       );
     }
@@ -421,7 +417,7 @@ class _HomePageState extends State<HomePage> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Text('Error: ${snapshot.error}');
+          return Text('Ralat: ${snapshot.error}');
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -432,14 +428,14 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Text('No foods found');
+          return const Text('Tiada makanan dijumpai');
         }
 
         final docs = snapshot.data!.docs;
 
         return DropdownButton<String>(
           value: food.selectedFoodName,
-          hint: const Text('Select Food'),
+          hint: const Text('Pilih Makanan'),
           isExpanded: true,
           underline: const SizedBox(),
           items: docs.map((doc) {
@@ -504,10 +500,7 @@ class _HomePageState extends State<HomePage> {
                   });
                 },
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
-                label: const Text(
-                  'Remove',
-                  style: TextStyle(color: Colors.red),
-                ),
+                label: const Text('Buang', style: TextStyle(color: Colors.red)),
               ),
             ),
         ],
@@ -522,7 +515,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         centerTitle: true,
         title: const Text(
-          "Food Logging",
+          "Log Makanan",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -533,11 +526,11 @@ class _HomePageState extends State<HomePage> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
                     .collection('users')
                     .doc(FirebaseAuth.instance.currentUser!.uid)
-                    .get(),
+                    .snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const DrawerHeader(
@@ -556,7 +549,7 @@ class _HomePageState extends State<HomePage> {
                   final String username =
                       userData['username']?.toString() ??
                       userData['userId']?.toString() ??
-                      "User";
+                      "Pengguna";
 
                   final String photoUrl =
                       userData['photoUrl']?.toString() ?? "";
@@ -571,16 +564,27 @@ class _HomePageState extends State<HomePage> {
                         CircleAvatar(
                           radius: 42,
                           backgroundColor: Colors.white,
-                          backgroundImage: photoUrl.isNotEmpty
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl.isEmpty
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: Color.fromARGB(255, 35, 63, 45),
-                                )
-                              : null,
+                          child: ClipOval(
+                            child: photoUrl.isNotEmpty
+                                ? Image.network(
+                                    photoUrl,
+                                    width: 84,
+                                    height: 84,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Color.fromARGB(255, 35, 63, 45),
+                                      );
+                                    },
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Color.fromARGB(255, 35, 63, 45),
+                                  ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -599,7 +603,7 @@ class _HomePageState extends State<HomePage> {
 
               ListTile(
                 leading: const Icon(Icons.person_outline),
-                title: const Text('User Profile'),
+                title: const Text('Profil Pengguna'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -611,7 +615,7 @@ class _HomePageState extends State<HomePage> {
 
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('Edit Profile'),
+                title: const Text('Kemaskini Profil'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -623,7 +627,7 @@ class _HomePageState extends State<HomePage> {
 
               ListTile(
                 leading: const Icon(Icons.restaurant_menu),
-                title: const Text('Recipes'),
+                title: const Text('Resipi'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -635,7 +639,7 @@ class _HomePageState extends State<HomePage> {
 
               ListTile(
                 leading: const Icon(Icons.health_and_safety_outlined),
-                title: const Text('Kidney Disease Info'),
+                title: const Text('Maklumat Penyakit Buah Pinggang'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -660,7 +664,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     icon: const Icon(Icons.logout, color: Colors.white),
                     label: const Text(
-                      'Logout',
+                      'Log Keluar',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -724,7 +728,7 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 18),
 
-            sectionTitle("Meal Type"),
+            sectionTitle("Jenis Hidangan"),
 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -735,17 +739,21 @@ class _HomePageState extends State<HomePage> {
               ),
               child: DropdownButton<String>(
                 value: selectedMealType,
-                hint: const Text('Select Meal Type'),
+                hint: const Text('Pilih Jenis Hidangan'),
                 isExpanded: true,
                 underline: const SizedBox(),
-                items: <String>['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((
-                  String value,
-                ) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
+                items:
+                    <String>[
+                      'Sarapan',
+                      'Makan Tengah Hari',
+                      'Makan Malam',
+                      'Snek',
+                    ].map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
                 onChanged: (String? newValue) {
                   setState(() {
                     selectedMealType = newValue;
@@ -756,7 +764,7 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 18),
 
-            sectionTitle("Food Category"),
+            sectionTitle("Kategori Makanan"),
 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -767,7 +775,7 @@ class _HomePageState extends State<HomePage> {
               ),
               child: DropdownButton<String>(
                 value: selectedCategory,
-                hint: const Text('Select Food Category'),
+                hint: const Text('Pilih Kategori Makanan'),
                 isExpanded: true,
                 underline: const SizedBox(),
                 items: category.map((String value) {
@@ -792,7 +800,7 @@ class _HomePageState extends State<HomePage> {
 
             Row(
               children: [
-                Expanded(child: sectionTitle("Foods")),
+                Expanded(child: sectionTitle("Makanan")),
                 TextButton.icon(
                   onPressed: () {
                     setState(() {
@@ -804,7 +812,7 @@ class _HomePageState extends State<HomePage> {
                     color: Color.fromARGB(255, 35, 63, 45),
                   ),
                   label: const Text(
-                    "Add Food",
+                    "Tambah Makanan",
                     style: TextStyle(
                       color: Color.fromARGB(255, 35, 63, 45),
                       fontWeight: FontWeight.bold,
@@ -826,7 +834,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 10),
 
             actionButton(
-              text: 'View Summary',
+              text: 'Lihat Ringkasan',
               icon: Icons.summarize,
               onTap: viewSummary,
               loading: _isLoading,
@@ -835,7 +843,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 10),
 
             actionButton(
-              text: 'Save Meal',
+              text: 'Simpan Hidangan',
               icon: Icons.save,
               onTap: saveMeal,
               loading: _isSaving,
@@ -844,7 +852,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 10),
 
             outlineActionButton(
-              text: 'Reset',
+              text: 'Tetapkan Semula',
               icon: Icons.refresh,
               onTap: resetForm,
             ),

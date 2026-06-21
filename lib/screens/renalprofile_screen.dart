@@ -14,19 +14,9 @@ class RenalProfileScreen extends StatefulWidget {
 class _RenalProfileScreenState extends State<RenalProfileScreen> {
   final User? user = FirebaseAuth.instance.currentUser;
 
-  final caloriesController = TextEditingController();
-  final proteinController = TextEditingController();
-  final potassiumController = TextEditingController();
-  final phosphateController = TextEditingController();
-
-  @override
-  void dispose() {
-    caloriesController.dispose();
-    proteinController.dispose();
-    potassiumController.dispose();
-    phosphateController.dispose();
-    super.dispose();
-  }
+  final Color darkGreen = const Color(0xFF223C3A);
+  final Color softGreen = const Color.fromARGB(255, 208, 250, 229);
+  final Color boxGreen = const Color.fromARGB(255, 188, 218, 198);
 
   Future<Map<String, dynamic>?> getUserData() async {
     if (user == null) return null;
@@ -39,98 +29,22 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     return doc.exists ? doc.data() : null;
   }
 
-  String calculateCaloriesLimit(double weight) {
-    final calories = weight * 35;
-    return calories.toStringAsFixed(0);
+  String getTextValue(Map<String, dynamic> data, String key) {
+    final value = data[key];
+
+    if (value == null || value.toString().trim().isEmpty) {
+      return 'N/A';
+    }
+
+    return value.toString();
   }
 
-  String calculateProteinLimit({
-    required double weight,
-    required String typeOfDisease,
-    required String stage,
-  }) {
-    final disease = typeOfDisease.toLowerCase();
-    final stageNum = stage.toLowerCase();
+  bool isNoRestriction(String value) {
+    final text = value.toLowerCase();
 
-    if (disease.contains('hemodialysis')) {
-      return (weight * 1.2).toStringAsFixed(0);
-    }
-
-    if (stageNum.contains('stage 1') || stageNum.contains('stage 2')) {
-      return (weight * 0.8).toStringAsFixed(0);
-    }
-
-    if (stageNum.contains('stage 3') ||
-        stageNum.contains('stage 4') ||
-        stageNum.contains('stage 5')) {
-      final protein = weight * 0.8;
-      return protein.toStringAsFixed(0);
-    }
-
-    return "N/A";
-  }
-
-  String calculatePotassiumLimit({
-    required String typeOfDisease,
-    required String stage,
-  }) {
-    final disease = typeOfDisease.toLowerCase();
-
-    if (disease.toLowerCase().contains('hemodialysis')) {
-      return "3000";
-    }
-
-    return "No restriction unless blood potassium level is elevated";
-  }
-
-  String calculatePhosphateLimit({
-    required String typeOfDisease,
-    required String stage,
-  }) {
-    final disease = typeOfDisease.toLowerCase();
-    final stageNum = stage.toLowerCase();
-
-    if (disease.contains('hemodialysis')) {
-      return "1000";
-    }
-
-    if (stageNum.contains('stage 1') || stageNum.contains('stage 2')) {
-      return "No restriction";
-    }
-
-    if (stageNum.contains('stage 3') ||
-        stageNum.contains('stage 4') ||
-        stageNum.contains('stage 5')) {
-      return "1000";
-    }
-
-    return "N/A";
-  }
-
-  void initializeControllers(Map<String, dynamic> data) {
-    final double weight = double.tryParse(data['weight'].toString()) ?? 0.0;
-
-    final String stage = data['stage']?.toString() ?? "";
-    final String typeOfDisease = data['typeOfDisease']?.toString() ?? "";
-
-    caloriesController.text =
-        data['caloriesLimit']?.toString() ?? calculateCaloriesLimit(weight);
-
-    proteinController.text =
-        data['proteinLimit']?.toString() ??
-        calculateProteinLimit(
-          weight: weight,
-          typeOfDisease: typeOfDisease,
-          stage: stage,
-        );
-
-    potassiumController.text =
-        data['potassiumLimit']?.toString() ??
-        calculatePotassiumLimit(typeOfDisease: typeOfDisease, stage: stage);
-
-    phosphateController.text =
-        data['phosphateLimit']?.toString() ??
-        calculatePhosphateLimit(typeOfDisease: typeOfDisease, stage: stage);
+    return text.contains('tiada sekatan') ||
+        text.contains('no restriction') ||
+        text.contains('n/a');
   }
 
   Widget infoBox() {
@@ -138,14 +52,14 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 188, 218, 198),
+        color: boxGreen,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF223C3A), width: 3),
+        border: Border.all(color: darkGreen, width: 2),
       ),
-      child: const Text(
-        "These recommendations are general guidelines only. Please consult your doctor or renal dietitian for personalized dietary advice.",
+      child: Text(
+        'Cadangan ini hanyalah panduan umum. Sila rujuk doktor atau pakar diet renal untuk nasihat pemakanan yang lebih sesuai dengan keadaan anda.',
         style: TextStyle(
-          color: const Color(0xFF223C3A),
+          color: darkGreen,
           fontSize: 13,
           fontWeight: FontWeight.bold,
         ),
@@ -153,19 +67,19 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     );
   }
 
-  Widget phosphateinfoBox() {
+  Widget phosphateInfoBox() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 188, 218, 198),
+        color: boxGreen,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF223C3A), width: 3),
+        border: Border.all(color: darkGreen, width: 2),
       ),
-      child: const Text(
-        "Note: Phosphate intake should be adjusted based on dietary protein needs.",
+      child: Text(
+        'Nota: Pengambilan fosfat perlu disesuaikan mengikut keperluan protein harian.',
         style: TextStyle(
-          color: const Color(0xFF223C3A),
+          color: darkGreen,
           fontSize: 13,
           fontWeight: FontWeight.bold,
         ),
@@ -175,46 +89,48 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
 
   Widget nutrientBox({
     required String title,
-    required TextEditingController controller,
+    required String value,
     required String unit,
     required IconData icon,
     required Color color,
   }) {
+    final String displayValue = unit.isEmpty ? value : '$value $unit';
+
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color.fromARGB(255, 28, 39, 38),
-          width: 3,
+          width: 2,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  "$title",
+          Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
                   style: const TextStyle(
                     color: Color.fromARGB(255, 3, 10, 2),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-
           Text(
-            "${controller.text} $unit",
+            displayValue,
             style: const TextStyle(
-              color: Color.fromARGB(255, 250, 247, 247),
+              color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
@@ -224,36 +140,56 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
     );
   }
 
+  bool shouldShowPhosphateInfo({
+    required String typeOfDisease,
+    required String stage,
+  }) {
+    final disease = typeOfDisease.toLowerCase();
+    final stageText = stage.toLowerCase();
+
+    return disease.contains('hemodialisis') ||
+        disease.contains('hemodialysis') ||
+        stageText.contains('tahap 3') ||
+        stageText.contains('tahap 4') ||
+        stageText.contains('tahap 5') ||
+        stageText.contains('stage 3') ||
+        stageText.contains('stage 4') ||
+        stageText.contains('stage 5');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 208, 250, 229),
+      backgroundColor: softGreen,
       body: SafeArea(
         child: FutureBuilder<Map<String, dynamic>?>(
           future: getUserData(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return Center(child: CircularProgressIndicator(color: darkGreen));
             }
 
             if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(child: Text("No user data found"));
+              return const Center(child: Text('Tiada data pengguna dijumpai'));
             }
 
             final data = snapshot.data!;
-            initializeControllers(data);
 
             final double weight =
                 double.tryParse(data['weight'].toString()) ?? 0.0;
-            final String stage = data['stage']?.toString() ?? "";
-            final String typeOfDisease =
-                data['typeOfDisease']?.toString() ?? "";
 
-            final bool showPhosphateInfo =
-                typeOfDisease.toLowerCase().contains('hemodialysis') ||
-                stage.toLowerCase().contains('stage 3') ||
-                stage.toLowerCase().contains('stage 4') ||
-                stage.toLowerCase().contains('stage 5');
+            final String stage = getTextValue(data, 'stage');
+            final String typeOfDisease = getTextValue(data, 'typeOfDisease');
+
+            final String caloriesLimit = getTextValue(data, 'caloriesLimit');
+            final String proteinLimit = getTextValue(data, 'proteinLimit');
+            final String potassiumLimit = getTextValue(data, 'potassiumLimit');
+            final String phosphateLimit = getTextValue(data, 'phosphateLimit');
+
+            final bool showPhosphateInfo = shouldShowPhosphateInfo(
+              typeOfDisease: typeOfDisease,
+              stage: stage,
+            );
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -262,18 +198,18 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                 children: [
                   Center(
                     child: Column(
-                      children: const [
+                      children: [
                         Icon(
                           Icons.health_and_safety,
-                          color: Color(0xFF223C3A),
+                          color: darkGreen,
                           size: 42,
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
-                          "Your Daily Limits",
+                          'Had Nutrien Harian Anda',
                           style: TextStyle(
-                            color: Color(0xFF223C3A),
-                            fontSize: 20,
+                            color: darkGreen,
+                            fontSize: 21,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -285,10 +221,10 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
 
                   Center(
                     child: Text(
-                      "$typeOfDisease • $stage • ${weight.toStringAsFixed(0)} kg",
+                      '$typeOfDisease • $stage • ${weight.toStringAsFixed(0)} kg',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF223C3A),
+                      style: TextStyle(
+                        color: darkGreen,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -301,40 +237,36 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
 
                   const SizedBox(height: 18),
 
-                  IntrinsicHeight(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: nutrientBox(
-                            title: "Calories",
-                            controller: caloriesController,
-                            unit: "kcal",
-                            icon: Icons.local_fire_department,
-                            color: const Color.fromARGB(255, 180, 131, 59),
-                          ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: nutrientBox(
+                          title: 'Kalori',
+                          value: caloriesLimit,
+                          unit: 'kcal',
+                          icon: Icons.local_fire_department,
+                          color: const Color.fromARGB(255, 180, 131, 59),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: nutrientBox(
-                            title: "Protein",
-                            controller: proteinController,
-                            unit: "g",
-                            icon: Icons.fitness_center,
-                            color: const Color(0xFF225AA8),
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: nutrientBox(
+                          title: 'Protein',
+                          value: proteinLimit,
+                          unit: 'g',
+                          icon: Icons.fitness_center,
+                          color: const Color(0xFF225AA8),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 12),
 
                   nutrientBox(
-                    title: "Potassium",
-                    controller: potassiumController,
-                    unit: potassiumController.text.contains("No restriction")
-                        ? ""
-                        : "mg",
+                    title: 'Kalium',
+                    value: potassiumLimit,
+                    unit: isNoRestriction(potassiumLimit) ? '' : 'mg',
                     icon: Icons.flash_on,
                     color: const Color.fromARGB(255, 121, 51, 115),
                   ),
@@ -342,18 +274,16 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                   const SizedBox(height: 12),
 
                   nutrientBox(
-                    title: "Phosphate",
-                    controller: phosphateController,
-                    unit: phosphateController.text.contains("No restriction")
-                        ? ""
-                        : "mg",
+                    title: 'Fosfat',
+                    value: phosphateLimit,
+                    unit: isNoRestriction(phosphateLimit) ? '' : 'mg',
                     icon: Icons.medication,
                     color: const Color(0xFF6D3BAA),
                   ),
 
                   if (showPhosphateInfo) ...[
                     const SizedBox(height: 12),
-                    phosphateinfoBox(),
+                    phosphateInfoBox(),
                   ],
 
                   const SizedBox(height: 22),
@@ -363,7 +293,7 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF223C3A),
+                        backgroundColor: darkGreen,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -376,11 +306,12 @@ class _RenalProfileScreenState extends State<RenalProfileScreen> {
                                 const EditRenalProfileScreen(),
                           ),
                         );
-                        setState(() {}); // Refresh data when coming back
+
+                        setState(() {});
                       },
-                      child: Text(
-                        "Edit Limits",
-                        style: const TextStyle(
+                      child: const Text(
+                        'Kemaskini Had',
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

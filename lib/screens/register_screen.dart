@@ -37,16 +37,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String confirmPassword = confirmPasswordController.text.trim();
 
     if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sila isi semua ruangan')));
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kata laluan tidak sepadan')),
+      );
       return;
     }
 
@@ -71,13 +71,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Registration failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Pendaftaran gagal')));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Something went wrong: $e')));
+      ).showSnackBar(SnackBar(content: Text('Ralat berlaku: $e')));
     } finally {
       setState(() => isLoading = false);
     }
@@ -115,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 28),
 
               const Text(
-                'Create Account',
+                'Cipta Akaun Baru',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -126,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 4),
 
               const Text(
-                'Sign up to start tracking your renal diet.',
+                'Daftar untuk mula mengurus diet renal anda.',
                 style: TextStyle(
                   fontSize: 16,
                   color: Color.fromARGB(255, 35, 68, 47),
@@ -147,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        label: Text('Email'),
+                        label: Text('E-mel'),
                         icon: Icon(Icons.email_rounded),
                       ),
                     ),
@@ -158,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: passwordController,
                       obscureText: hidePassword,
                       decoration: InputDecoration(
-                        label: const Text('Password'),
+                        label: const Text('Kata Laluan'),
                         icon: const Icon(Icons.lock_rounded),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -182,7 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: confirmPasswordController,
                       obscureText: hideConfirmPassword,
                       decoration: InputDecoration(
-                        label: const Text('Confirm Password'),
+                        label: const Text('Sahkan Kata Laluan'),
                         icon: const Icon(Icons.lock_rounded),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -231,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               )
                             : const Text(
-                                'Create Account',
+                                'Cipta Akaun Baru',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 17,
@@ -247,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'Already have an account?',
+                          'Sudah mempunyai akaun?',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.black87,
@@ -264,7 +264,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               vertical: 4,
                             ),
                             child: Text(
-                              'Login instead',
+                              'Log Masuk',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Color.fromARGB(255, 35, 63, 45),
