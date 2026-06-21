@@ -32,11 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Log Masuk Gagal')));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Something went wrong: $e')));
+      ).showSnackBar(SnackBar(content: Text('Ralat berlaku: $e')));
     }
   }
 
@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 25),
 
                 const Text(
-                  "Welcome Back",
+                  "Selamat Kembali",
                   style: TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.bold,
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
 
                 const Text(
-                  "Log in to continue your meal journey",
+                  "Log masuk untuk meneruskan pengurusan diet renal anda",
                   style: TextStyle(
                     fontSize: 16,
                     color: Color.fromARGB(255, 35, 68, 47),
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          labelText: ('Email'),
+                          labelText: ('E-mel'),
                           icon: const Icon(Icons.email_outlined),
                         ),
                       ),
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText: ('Password'),
+                          labelText: ('Kata Laluan'),
                           icon: const Icon(Icons.lock_outline),
                         ),
                       ),
@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             );
                           },
                           child: const Text(
-                            'Forgot password?',
+                            'Lupa kata laluan?',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Color.fromARGB(255, 15, 55, 38),
@@ -168,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             elevation: 5,
                           ),
                           child: const Text(
-                            'Sign In',
+                            'Log Masuk',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -186,10 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Don't have an account?",
-                      style: TextStyle(fontSize: 15),
-                    ),
+                    const Text("Tiada akaun?", style: TextStyle(fontSize: 15)),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -202,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: const Text(
-                        'Register now',
+                        'Daftar sekarang',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Color.fromARGB(255, 15, 55, 38),
