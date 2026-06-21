@@ -119,6 +119,8 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
+          SizedBox(height: 20),
+
           if (showMainScreen == true)
             Align(
               alignment: Alignment.bottomCenter,
@@ -129,7 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Take Control of Your Kidney Health',
+                      'Kawal Kesihatan Buah Pinggang Anda',
                       style: TextStyle(
                         fontSize: 27,
                         fontWeight: FontWeight.bold,
@@ -140,8 +142,7 @@ class _SplashScreenState extends State<SplashScreen>
                     const SizedBox(height: 15),
 
                     Text(
-                      'Track nutrients, discover kidney-friendly meals, '
-                      'and manage your renal diet with confidence and ease.',
+                      'Pantau nutrien harian, temui pilihan makanan mesra buah pinggang, dan urus pemakanan renal anda dengan lebih yakin dan teratur.',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
