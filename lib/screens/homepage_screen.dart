@@ -421,10 +421,7 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(8),
-            child: CircularProgressIndicator(),
-          );
+          return const SizedBox.shrink();
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
